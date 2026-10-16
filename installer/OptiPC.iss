@@ -1,6 +1,6 @@
 ; ============================================================
 ;  OptiPC 2.0 - Installateur Inno Setup (SecureeTech)
-;  Compile automatiquement par GitHub Actions (.github/workflows/release.yml) :
+;  Compile et signe automatiquement par GitHub Actions (workflow « OptiPC release » du depot secureetech-pdf) :
 ;    ISCC.exe /DAppVersion=2.0.0 installer\OptiPC.iss
 ;  Remplace proprement OptiPC V1 (meme AppId, meme dossier Program Files).
 ; ============================================================
@@ -42,6 +42,11 @@ SolidCompression=yes
 WizardStyle=modern
 CloseApplications=no
 RestartApplications=no
+; Signature SSL.com par Inno Setup lui-meme (/DSign + /Ssslcom=... sur la ligne de commande ISCC)
+#ifdef Sign
+SignTool=sslcom
+SignedUninstaller=yes
+#endif
 
 [Languages]
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
