@@ -1273,7 +1273,7 @@ function Write-OptiJsonDict([string]$path, $obj){
 function Get-OptiDictPath($d, [string]$dotted){
     $cur = $d
     foreach($k in $dotted.Split('.')){
-        if($cur -is [System.Collections.IDictionary] -and $cur.Contains($k)){ $cur = $cur[$k] } else { return $null }
+        if($cur -is [System.Collections.IDictionary] -and ([System.Collections.IDictionary]$cur).Contains($k)){ $cur = $cur[$k] } else { return $null }
     }
     ,$cur
 }
@@ -1325,7 +1325,7 @@ function Get-OptiBrowserHijack {
                     if(-not (Test-Path $file)){ continue }
                     $d = $null; try{ $d = Read-OptiJsonDict $file }catch{ continue }
                     $ros = Get-OptiDictPath $d 'session.restore_on_startup'
-                    $urls = @(Get-OptiDictPath $d 'session.startup_urls')
+                    $urls = Get-OptiDictPath $d 'session.startup_urls'; if($null -eq $urls){ $urls = @() } else { $urls = @($urls) }
                     if([string]$ros -eq '4' -and $urls.Count){
                         $bad = @($urls | ForEach-Object { Get-OptiUrlHost ([string]$_) } | Where-Object { $_ -and -not (Test-OptiSafeHost $_) })
                         if($bad.Count){ & $add $b.name 'prefs' 'crit' "Page de démarrage détournée ($($pf.Name))" (($bad | Select-Object -Unique) -join ', ') $pf.FullName }
@@ -1412,7 +1412,7 @@ function Repair-OptiBrowserHijack {
                         $d = Read-OptiJsonDict $file
                         $sess = Get-OptiDictPath $d 'session'
                         if($sess -is [System.Collections.IDictionary]){ $sess.Remove('restore_on_startup') | Out-Null; $sess.Remove('startup_urls') | Out-Null }
-                        foreach($kk in @('homepage','homepage_is_newtabpage','default_search_provider_data','default_search_provider')){ if($d.Contains($kk)){ $d.Remove($kk) | Out-Null } }
+                        foreach($kk in @('homepage','homepage_is_newtabpage','default_search_provider_data','default_search_provider')){ if(([System.Collections.IDictionary]$d).Contains($kk)){ $d.Remove($kk) | Out-Null } }
                         $macs = Get-OptiDictPath $d 'protection.macs'
                         if($macs -is [System.Collections.IDictionary]){
                             foreach($kk in @('homepage','homepage_is_newtabpage','default_search_provider_data')){ $macs.Remove($kk) | Out-Null }
