@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<title>OptiPC</title>
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="app.css">
+<script>try{var t=localStorage.getItem('optipc_theme')||'dark';if(t==='auto'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);var z=localStorage.getItem('optipc_zoom');if(z){document.documentElement.style.zoom=z;}}catch(e){}</script>
+</head>
+<body>
+
+<!-- ══ BARRE DU HAUT STYLISÉE ═════════════════════════════════════════════ -->
+<header class="titlebar" ondblclick="if(event.target.closest('.nd'))return;wcMax()">
+  <img class="tb-logo" src="logo.png" alt="">
+  <span class="tb-name">Opti<b>PC</b></span>
+  <span class="tb-ver opti-ver">2.0</span>
+  <span class="tb-sub">by SecureeTech</span>
+  <span class="tb-sp"></span>
+  <span class="tb-pill nd" id="tb-status" title="État de protection"><span class="dot"></span><span id="top-status-txt">Prêt</span></span>
+  <button type="button" class="tb-btn nd" onclick="openCallback()" title="Être rappelé par un technicien"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span>Aide <b class="tb-tel">05 54 54 23 43</b></span></button>
+  <button type="button" class="tb-prem shine nd" id="tb-prem" onclick="openPremium()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg><span>Passer en Premium</span></button>
+  <button type="button" class="tb-btn nd" id="tb-theme" onclick="toggleTheme()" aria-label="Changer de thème">
+    <svg id="tb-theme-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg><span id="tb-theme-txt">Sombre</span>
+  </button>
+  <span style="width:4px"></span>
+  <button type="button" class="wc nd" onclick="wcMin()" aria-label="Réduire"><svg viewBox="0 0 12 12" aria-hidden="true"><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.2"/></svg></button>
+  <button type="button" class="wc nd" id="wc-max" onclick="wcMax()" aria-label="Agrandir"><svg viewBox="0 0 12 12" aria-hidden="true" id="wc-max-ico"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button>
+  <button type="button" class="wc x nd" onclick="wcClose()" aria-label="Fermer"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.2"/></svg></button>
+</header>
+
+<div class="app">
+<!-- ══ MENU ═══════════════════════════════════════════════════════════════ -->
+<nav class="sb" aria-label="Menu OptiPC">
+  <button class="sb-item active" data-sec="home" onclick="showSec('home',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/></svg><span>Accueil</span></button>
+  <button class="sb-item" data-sec="clean" onclick="showSec('clean',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg><span>Nettoyage</span></button>
+  <button class="sb-item" data-sec="space" onclick="showSec('space',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M14 3.3A9 9 0 0 1 20.7 10H14z"/></svg><span>Espace disque</span><span class="sb-new">NOUVEAU</span></button>
+  <button class="sb-item" data-sec="protect" onclick="showSec('protect',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Protection</span><span class="sb-badge" id="sb-prot-badge">!</span></button>
+  <button class="sb-item" data-sec="apps" onclick="showSec('apps',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Applications</span></button>
+  <button class="sb-item" data-sec="network" onclick="showSec('network',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8.5a15 15 0 0 1 20 0"/><path d="M5 12a10.5 10.5 0 0 1 14 0"/><path d="M8.5 15.5a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19" r="1"/></svg><span>Réseau</span><span class="sb-new">NOUVEAU</span></button>
+  <button class="sb-item" data-sec="health" onclick="showSec('health',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 8.6a5 5 0 0 0-8.8-3.2 5 5 0 0 0-8.8 3.2c0 5.4 8.8 11.4 8.8 11.4s8.8-6 8.8-11.4z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg><span>Santé du PC</span></button>
+  <button class="sb-item" data-sec="tools" onclick="showSec('tools',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0 5 5L21 13l-8 8-3-3 8-8"/><path d="M14.7 6.3 13 4.6a4 4 0 0 0-5.6 5.6L3 14.6 6.4 18l4.4-4.4"/></svg><span>Outils</span></button>
+  <button class="sb-item" data-sec="params" onclick="showSec('params',this)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg><span>Paramètres</span></button>
+
+  <div class="sb-sp"></div>
+  <div class="sb-lbl live-h">En direct <span class="live-dot"></span></div>
+  <div class="sb-graphs">
+    <div class="sb-g"><div class="sb-g-h"><span class="sb-g-l">Processeur</span><span class="sb-g-v" id="sb-cpu-pct" style="color:var(--c-cpu)">--</span></div><canvas id="sb-cpu-canvas" width="240" height="60"></canvas><div class="sb-g-f" id="sb-cpu-detail">--</div></div>
+    <div class="sb-g"><div class="sb-g-h"><span class="sb-g-l">Température</span><span class="sb-g-v" id="sb-temp-val" style="color:var(--c-temp)">--</span></div><canvas id="sb-temp-canvas" width="240" height="60"></canvas><div class="sb-g-f" id="sb-temp-detail">--</div></div>
+    <div class="sb-g"><div class="sb-g-h"><span class="sb-g-l">Mémoire</span><span class="sb-g-v" id="sb-ram-pct" style="color:var(--c-ram)">--</span></div><canvas id="sb-ram-canvas" width="240" height="60"></canvas><div class="sb-g-f" id="sb-ram-detail">--</div></div>
+    <div class="sb-g"><div class="sb-g-h"><span class="sb-g-l">Disque</span><span class="sb-g-v" id="sb-dsk-pct" style="color:var(--c-disk)">--</span></div><canvas id="sb-dsk-canvas" width="240" height="60"></canvas><div class="sb-g-f" id="sb-dsk-detail">Activité du disque</div></div>
+    <div class="sb-g wide" id="sb-gpu-box" style="display:none"><div class="sb-g-h"><span class="sb-g-l">Carte graphique</span><span class="sb-g-v" id="sb-gpu-pct" style="color:var(--c-gpu)">--</span></div><canvas id="sb-gpu-canvas" width="480" height="60"></canvas><div class="sb-g-f" id="sb-gpu-detail">--</div></div>
+  </div>
+  <div style="display:none"><span id="sb-disk-txt"></span><span id="sb-net-txt"></span><span id="sb-self-txt"></span></div>
+  <div class="sb-prem shine" id="sb-prem">
+    <div class="sb-prem-t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg><span id="sb-prem-title">OptiPC Premium</span></div>
+    <div class="sb-prem-d" id="sb-prem-desc">Nettoyage automatique chaque semaine, mises à jour des logiciels, aucune limite.</div>
+    <div class="sb-prem-price" id="sb-prem-price"><b>49,90 €</b><span>/ an</span><s>99,80 €</s></div>
+    <button class="btn-activate" id="btn-activate-pro" onclick="openPremium()">Passer en Premium</button>
+  </div>
+</nav>
+
+<main class="main">
+<div class="sections">
+
+<!-- ══ ACCUEIL ════════════════════════════════════════════════════════════ -->
+<section class="sec active" id="sec-home"><div class="sec-in">
+  <div class="hero" id="hero" data-phase="idle">
+    <div class="orbwrap">
+      <button type="button" class="orb nd" id="orb" onclick="orbClick()" aria-label="Analyser mon PC">
+        <span class="o-track"></span><span class="o-ring"></span><span class="o-ring2"></span>
+        <span class="orbit"><i></i></span><span class="orbit o2"><i></i></span>
+        <span class="halo"></span><span class="halo d2"></span>
+        <span class="o-core"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><b>ANALYSER</b><small>1 clic · 1 minute</small></span>
+        <span class="o-scan"><span class="o-sweep"></span><b id="orb-pct">0 %</b><small id="orb-scan-lbl">ANALYSE…</small></span>
+        <span class="o-score">
+          <svg viewBox="0 0 290 290" aria-hidden="true"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" id="sg1" stop-color="#FFE08A"/><stop offset="1" id="sg2" stop-color="#FFB547"/></linearGradient></defs>
+            <circle cx="145" cy="145" r="120" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="16"/>
+            <circle id="score-arc" cx="145" cy="145" r="120" fill="none" stroke="url(#sg)" stroke-width="16" stroke-linecap="round" stroke-dasharray="0 754" transform="rotate(-90 145 145)"/></svg>
+          <span class="o-score-in"><b id="orb-score">--</b><small>sur 100</small><span class="o-lbl" id="orb-lbl"></span></span>
+        </span>
+      </button>
+    </div>
+    <div class="hero-txt">
+      <div class="hp hp-idle">
+        <span class="hpill" id="last-scan-pill">Votre PC n'a pas encore été analysé</span>
+        <h1 class="h-title">Un PC <span class="grad">rapide et protégé</span>, en un seul clic.</h1>
+        <p class="h-sub">OptiPC passe tout votre ordinateur au crible : fichiers inutiles, doublons, dossiers et fichiers vides, démarrage, protection, disques. Rien n'est supprimé sans votre accord.</p>
+        <div class="chips">
+          <span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8zM19 15l.9 2.1 2.1.9-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg>Fichiers inutiles</span><span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>Doublons</span><span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Dossiers et fichiers vides</span><span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2"/><path d="M9 15 5.5 11.5c1-3 3.5-6.5 8.5-8.5 2 0 4 0 7 .5.5 3 .5 5 .5 7-2 5-5.5 7.5-8.5 8.5z"/><circle cx="15" cy="9" r="1.6"/></svg>Démarrage</span><span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Protection</span><span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 8.6a5 5 0 0 0-8.8-3.2 5 5 0 0 0-8.8 3.2c0 5.4 8.8 11.4 8.8 11.4s8.8-6 8.8-11.4z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg>Santé des disques</span><span class="chip"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>Logiciels à jour</span>
+        </div>
+        <button type="button" class="btn-big shine" onclick="startHomeScan()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Lancer l'analyse complète</button>
+      </div>
+      <div class="hp hp-scan">
+        <h1 class="h-title" style="font-size:32px">Analyse en cours…</h1>
+        <p class="h-sub mono" id="scan-count">Préparation…</p>
+        <div class="steps" id="scan-steps"></div>
+        <div class="pbar"><i id="scan-bar"></i></div>
+      </div>
+      <div class="hp hp-done">
+        <span class="hpill warn" id="done-pill">--</span>
+        <h1 class="h-title">Vous pouvez récupérer <span class="grad" id="done-gain">0 Go</span></h1>
+        <div class="gains" id="done-gains"></div>
+        <div class="row" style="flex-wrap:wrap;gap:12px">
+          <button type="button" class="btn-boost shine" id="btn-boost" onclick="startOptimize()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2"/><path d="M9 15 5.5 11.5c1-3 3.5-6.5 8.5-8.5 2 0 4 0 7 .5.5 3 .5 5 .5 7-2 5-5.5 7.5-8.5 8.5z"/><circle cx="15" cy="9" r="1.6"/></svg><span>BOOSTER MON PC</span></button>
+          <button type="button" class="btn-ghost-dark" onclick="startHomeScan()">Analyser à nouveau</button>
+        </div>
+        <div class="h-note">Un point de restauration est créé avant : vous pouvez revenir en arrière à tout moment.</div>
+      </div>
+      <div class="hp hp-opt">
+        <h1 class="h-title" style="font-size:32px">Optimisation en cours…</h1>
+        <p class="h-sub">OptiPC s'occupe de tout. Ne fermez pas la fenêtre.</p>
+        <div class="steps" id="opt-steps"></div>
+        <div class="pbar"><i id="opt-bar"></i></div>
+      </div>
+      <div class="hp hp-fixed">
+        <span class="hpill ok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>Optimisation terminée</span>
+        <h1 class="h-title">Votre PC est <span class="glow-ok">en pleine forme</span>.</h1>
+        <div class="kpis" id="fix-kpis"></div>
+        <div class="h-note" id="fix-note"></div>
+        <div class="row" style="flex-wrap:wrap;gap:12px;margin-top:6px"><button type="button" class="btn-ghost-dark" onclick="resetHome()">Terminer</button><button type="button" class="btn-ghost-dark" id="fix-recycle" style="display:none" onclick="emptyRecycle()">Vider la Corbeille</button></div>
+      </div>
+      <div class="burst" id="burst" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <section class="card res-card" id="home-results" style="display:none" aria-label="Résultats de l'analyse">
+    <div class="res-h"><h2>Ce que l'analyse a trouvé</h2><span class="muted">Cochez ce que vous voulez corriger</span><span style="flex:1"></span><span class="res-total">Sélection : <b id="res-sel">0 Go</b></span></div>
+    <div id="res-list"></div>
+  </section>
+
+  <div id="home-dash" style="display:flex;flex-direction:column;gap:18px">
+    <div class="stat-grid">
+      <div class="stat-card link lift" onclick="goSec('protect')"><div class="stat-lbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Protection</div><div class="stat-val" id="st-prot">--</div><div class="stat-sub" id="st-prot-sub">Vérification...</div></div>
+      <div class="stat-card link lift" onclick="goSec('space')"><div class="stat-lbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M14 3.3A9 9 0 0 1 20.7 10H14z"/></svg>Espace libre</div><div class="stat-val" id="stat-disk">--</div><div class="bar"><i id="stat-disk-bar" style="width:0%"></i></div></div>
+      <div class="stat-card link lift" onclick="goSec('health')"><div class="stat-lbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 8.6a5 5 0 0 0-8.8-3.2 5 5 0 0 0-8.8 3.2c0 5.4 8.8 11.4 8.8 11.4s8.8-6 8.8-11.4z"/><path d="M3.5 12h4l2-3 3 6 2-3h6"/></svg>Santé des disques</div><div class="stat-val" id="st-disk">--</div><div class="stat-sub" id="st-disk-sub">Vérification...</div></div>
+      <div class="stat-card link lift" onclick="goSec('apps');setTimeout(()=>appFilter('start'),60)"><div class="stat-lbl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2"/><path d="M9 15 5.5 11.5c1-3 3.5-6.5 8.5-8.5 2 0 4 0 7 .5.5 3 .5 5 .5 7-2 5-5.5 7.5-8.5 8.5z"/><circle cx="15" cy="9" r="1.6"/></svg>Démarrage</div><div class="stat-val" id="st-boot">--</div><div class="stat-sub" id="st-boot-sub">--</div></div>
+    </div>
+    <div class="home-row">
+      <div class="card hist-wrap">
+        <div class="flex-b"><div class="card-title" style="margin:0">Votre PC depuis 30 jours</div><span id="hist-delta" class="hpill" style="font-size:12px"></span></div>
+        <svg id="hist-svg" viewBox="0 0 600 160" width="100%" height="160" preserveAspectRatio="none" role="img" aria-label="Évolution du score"></svg>
+        <div class="hist-legend"><span id="hist-first">--</span><span id="hist-last">Aujourd'hui</span></div>
+      </div>
+      <div class="promo shine" id="prem-banner">
+        <span class="promo-tag">−50 % · offre limitée</span>
+        <div class="promo-t">Laissez OptiPC s'occuper de tout, chaque semaine.</div>
+        <div class="promo-d">Nettoyage automatique, mises à jour des logiciels, doublons et gros fichiers sans limite.</div>
+        <div class="promo-p"><b>49,90 €</b> / an <s>99,80 €</s></div>
+        <button type="button" class="btn-big" style="min-height:48px;font-size:16px" onclick="openPremium()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg>Passer en Premium</button>
+        <button type="button" class="promo-link" id="pb-trial" onclick="openTrial()">Essai gratuit 5 jours</button>
+      </div>
+    </div>
+  </div>
+  <div style="display:none"><span id="st-upd"></span><span id="st-upd-sub"></span><span id="stat-total"></span><i id="stat-total-bar"></i><span id="stat-procs"></span><span id="stat-ram"></span><i id="stat-ram-bar"></i><div id="hist-prem"></div><div id="home-recs"></div><div id="rec-list"></div><button id="btn-fixall"></button><span id="res-title"></span><span id="res-sub"></span><div id="care-idle"></div><div id="care-results"></div><button id="optim-btn"></button><span id="scan-txt"></span><span id="scan-sub"></span><span id="scan-score"></span><span id="scan-score-sub"></span><div id="scan-ring"></div><div id="home-ring"></div><div id="ring-content"></div><svg><circle id="ring-arc"/></svg></div>
+</div></section>
+
+<!-- ══ NETTOYAGE ══════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-clean"><div class="sec-in">
+  <div class="sec-h"><div><h1>Nettoyage</h1><p>Libérez de la place sur votre ordinateur en toute sécurité.</p></div></div>
+  <div class="note acc row" style="flex-wrap:wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M14 3.3A9 9 0 0 1 20.7 10H14z"/></svg><span style="flex:1">Doublons, gros fichiers, dossiers et fichiers vides : tout est dans <b>Espace disque</b>.</span><button class="btn-su btn-soft" onclick="goSec('space')">Ouvrir Espace disque</button></div>
+
+  <div id="clean-quick" style="display:flex;flex-direction:column;gap:16px">
+    <div class="card">
+      <div class="flex-b" style="flex-wrap:wrap">
+        <div><div class="card-title" style="margin:0">Fichiers inutiles · <span id="qc-total" style="color:var(--acc-text)">--</span> à libérer</div><div class="card-sub" style="margin:4px 0 0">Fichiers temporaires, caches des navigateurs, corbeille, journaux Windows…</div></div>
+        <div class="row"><button class="btn-su btn-ghost" id="qc-scan" onclick="loadQuickClean(true)">Analyser</button><button class="btn-su btn-primary" id="qc-go" onclick="runQuickClean()">Nettoyer la sélection</button></div>
+      </div>
+      <div id="qc-list" style="margin-top:14px"><div class="empty-note"><span class="spin" style="width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:8px"></span>Analyse en cours…</div></div>
+    </div>
+  </div>
+
+  <div style="display:none"><button id="ctab-quick"></button><button id="ctab-space"></button><div id="clean-space"></div></div>
+</div></section>
+
+<!-- ══ ESPACE DISQUE ══════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-space"><div class="sec-in">
+  <div class="sec-h"><div><h1>Espace disque</h1><p>Doublons, gros fichiers, dossiers et fichiers vides : retrouvez ce qui encombre votre PC.</p></div><div class="acts"><button class="btn-su btn-ghost" onclick="loadSpace(true)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"/><path d="M20 20v-4h-4"/></svg>Relancer la recherche</button></div></div>
+  <div class="hero hero-sm" id="sp-start">
+    <div class="sp-ico"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9v9z"/><path d="M14 3.3A9 9 0 0 1 20.7 10H14z"/></svg></div>
+    <div class="hero-txt">
+      <h1 class="h-title" style="font-size:30px">Qu'est-ce qui prend de la place sur votre PC ?</h1>
+      <p class="h-sub">OptiPC parcourt vos dossiers personnels (Bureau, Documents, Images, Vidéos, Musique, Téléchargements) et trouve les doublons, les gros fichiers, les dossiers et fichiers vides et les téléchargements oubliés. Rien n'est supprimé sans votre accord.</p>
+      <button class="btn-big shine" onclick="loadSpace(true)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Rechercher maintenant</button>
+    </div>
+  </div>
+  <div id="sp-results" style="display:none;flex-direction:column;gap:18px">
+    <div class="hero hero-sm">
+      <div class="hero-txt" style="flex:0 1 320px">
+        <div class="h-k">Vous pouvez libérer</div>
+        <div class="big-total"><span class="v grad" id="sp-total">0 Mo</span></div>
+        <div class="h-k" id="sp-count"></div>
+      </div>
+      <div class="hero-txt" style="flex:1 1 420px">
+        <div class="flex-b h-k" style="margin-bottom:8px"><span id="sp-disk-cap">Disque C:</span><span class="mono" id="sp-meta"></span></div>
+        <div class="disk-bar seg-bar" id="sp-cats-bar" role="img" aria-label="Ce qui prend de la place"></div>
+        <div class="legend" id="sp-cats"></div>
+        <div class="disk-bar" id="sp-bar" style="display:none"></div>
+      </div>
+    </div>
+    <div class="cat-tiles" id="sp-tiles"></div>
+    <div class="flist card" style="padding:0">
+      <div class="flist-h">
+        <div><div style="font-size:18px;font-weight:800" id="sp-list-title">--</div><div class="muted" style="font-size:13px" id="sp-list-desc"></div></div>
+        <div class="row" style="flex-wrap:wrap">
+          <button class="btn-su btn-soft" onclick="spaceSelect('safe')">Cocher le sans risque</button>
+          <button class="btn-su btn-ghost" onclick="spaceSelect('none')">Tout décocher</button>
+        </div>
+      </div>
+      <div class="flist-b" id="sp-list"></div>
+      <div class="flist-f"><span>Sélection dans cette catégorie : <b style="color:var(--acc-text)" id="sp-cat-sel">0 Mo</b></span><span class="muted">Windows, Program Files et les fichiers système ne sont jamais proposés.</span></div>
+    </div>
+    <div class="dock">
+      <span class="dock-ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/></svg></span>
+      <div style="min-width:0;flex:1 1 240px"><div class="dock-t"><span id="sp-dock-n">0 élément</span> · <span class="grad" id="sp-dock-v">0 Mo</span></div><div class="dock-s">Dans la Corbeille, récupérables tant qu'elle n'est pas vidée.<span id="sp-prem"> Gratuit : 500 Mo à la fois · <a href="#" onclick="openPremium();return false" style="color:#FFB27A;font-weight:700">Premium = sans limite</a></span></div></div>
+      <button class="btn-ghost-dark" onclick="spaceMove()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Déplacer vers une clé USB</button>
+      <button class="btn-big shine" id="sp-go" style="min-height:50px;font-size:16px" onclick="spaceRemove()">Libérer</button>
+    </div>
+  </div>
+</div></section>
+
+<!-- ══ PROTECTION ═════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-protect"><div class="sec-in">
+  <div class="sec-h"><div><h1>Protection</h1><p>Analyse antivirus, protections de Windows et vie privée.</p></div></div>
+  <div class="card brw-card" id="brw-card">
+    <div class="row" style="flex-wrap:wrap;align-items:flex-start;gap:14px">
+      <span class="ib acc" style="width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+      <div style="flex:1 1 320px"><div class="card-title" style="margin:0">Navigateurs détournés <span class="sb-new" style="margin-left:6px">NOUVEAU</span></div><div class="card-sub" style="margin:4px 0 0">Page de démarrage ou moteur de recherche qui changent tout seuls, « Géré par votre organisation », site qui s'ouvre au démarrage : OptiPC remet Chrome, Edge, Brave et Firefox d'aplomb. Favoris, mots de passe et historique ne sont pas touchés.</div></div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn-su btn-ghost" id="brw-scan" onclick="loadBrowserHijack()">Vérifier</button><button class="btn-su btn-primary" id="brw-fix" onclick="repairBrowsers()">Réparer en un clic</button></div>
+    </div>
+    <div id="brw-list" style="margin-top:12px"></div>
+  </div>
+  <div class="ptab-nav">
+    <button class="ptab-btn ptab-active" id="ptab-scan-btn" onclick="switchPTab('scan')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Analyse anti-malware</button>
+    <button class="ptab-btn" id="ptab-prot-btn" onclick="switchPTab('prot')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Protections et vie privée</button>
+  </div>
+
+  <div id="ptab-scan" class="ptab-content">
+    <div class="scan-hero-header">
+      <div><div class="scan-hero-title">Anti-spyware et malware</div><div class="scan-hero-sub">Recherche les virus, logiciels espions, programmes indésirables et menaces cachées.</div></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="scan-big-btn" id="btn-scan-quick" onclick="startFullScan('quick')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Rapide<span style="font-size:11px;opacity:.85;font-weight:500">15 contrôles · 1-2 min</span></button>
+        <button class="scan-big-btn" id="btn-scan-def" onclick="startDefenderFull(this)" style="background:linear-gradient(135deg,#1A7F95,#155E75)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>Defender<span style="font-size:11px;opacity:.85;font-weight:500">approfondie · 20-60 min</span></button>
+        <button class="scan-big-btn scan-big-full" id="btn-scan-full" onclick="startFullScan('full')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Complète<span style="font-size:11px;opacity:.85;font-weight:500">32 contrôles · 4-10 min</span></button>
+        <button class="scan-big-btn" id="btn-scan-cancel" onclick="stopScan()" style="display:none;background:linear-gradient(135deg,#E5484D,#B91C1C)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Arrêter</button>
+      </div>
+    </div>
+    <div id="def-full-status" class="note" style="display:none;align-items:center;gap:10px"></div>
+    <div id="prot-scan-zone">
+      <div class="scan-idle-state">
+        <svg viewBox="0 0 100 100" width="96" height="96" aria-hidden="true">
+          <circle cx="50" cy="50" r="47" fill="rgba(var(--acc-rgb),0.05)" stroke="rgba(var(--acc-rgb),0.25)" stroke-width="1"/>
+          <circle cx="50" cy="50" r="34" fill="none" stroke="rgba(var(--acc-rgb),0.2)" stroke-width="1" style="animation:idlePulseR 2.5s ease-in-out infinite"/>
+          <circle cx="50" cy="50" r="20" fill="none" stroke="rgba(var(--acc-rgb),0.25)" stroke-width="1" style="animation:idlePulseR 2.5s ease-in-out infinite;animation-delay:.8s"/>
+          <path d="M30 50 A20 20 0 0 1 50 30" stroke="rgba(var(--acc-rgb),0.7)" stroke-width="2" fill="none"/>
+          <circle cx="50" cy="50" r="3" fill="var(--purple)"/>
+        </svg>
+        <div class="scan-idle-title">Prêt à analyser votre PC</div>
+        <div class="scan-idle-sub">Choisissez un type d'analyse ci-dessus.</div>
+        <div class="scan-idle-cats">
+          <span class="scan-idle-cat">Windows Defender</span><span class="scan-idle-cat">Processus actifs</span><span class="scan-idle-cat">Programmes indésirables</span><span class="scan-idle-cat">Démarrage</span><span class="scan-idle-cat">Tâches planifiées</span><span class="scan-idle-cat">Fichiers dangereux</span><span class="scan-idle-cat">Réseau et fichier hosts</span><span class="scan-idle-cat">Rootkits et WMI</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ptab-prot" class="ptab-content" style="display:none">
+    <div class="prot-header">
+      <div class="prot-hico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2.5" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div><div class="prot-htxt">État de protection de votre PC</div><div class="prot-hsub">Score de sécurité : <span id="sec-score" style="font-weight:800;font-size:15px">--</span>/100 — plus le score est élevé, mieux votre PC est protégé</div></div>
+    </div>
+    <div class="grid2">
+      <div class="prot2-section">
+        <div class="prot2-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg>Protection du système Windows</div>
+        <div class="prot2-grid">
+          <div class="prot2-card" id="card-defender">
+            <div class="prot2-card-left"><div class="prot2-ico" style="background:var(--acc-soft)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="prot2-name">Windows Defender</div><div class="prot2-desc" id="def-sub">Vérification en cours...</div></div></div>
+            <div class="prot2-card-right"><span class="pill-idle prot2-pill" id="def-pill">--</span><button class="prot2-action-btn" id="def-fix-btn" onclick="doFix('enable_defender',this)" style="display:none">Activer</button><button class="prot2-action-btn prot2-btn-secondary" onclick="doFix('update_defender',this)">Mettre à jour</button></div>
+          </div>
+          <div class="prot2-card" id="card-firewall">
+            <div class="prot2-card-left"><div class="prot2-ico" style="background:var(--ok-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="9" x2="22" y2="9"/></svg></div><div><div class="prot2-name">Pare-feu Windows</div><div class="prot2-desc" id="fw-sub">Vérification en cours...</div></div></div>
+            <div class="prot2-card-right"><span class="pill-idle prot2-pill" id="fw-pill">--</span><button class="prot2-action-btn" id="fw-fix-btn" onclick="doFix('enable_firewall',this)" style="display:none">Activer</button><button class="prot2-action-btn prot2-btn-secondary" onclick="doFix('reset_firewall',this)">Réinitialiser</button></div>
+          </div>
+          <div class="prot2-card" id="card-uac">
+            <div class="prot2-card-left"><div class="prot2-ico" style="background:var(--warn-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div><div class="prot2-name">Contrôle des comptes</div><div class="prot2-desc" id="uac-sub">Vérification en cours...</div></div></div>
+            <div class="prot2-card-right"><span class="pill-idle prot2-pill" id="uac-pill">--</span><button class="prot2-action-btn" id="uac-fix-btn" onclick="doFix('enable_uac',this)" style="display:none">Activer</button></div>
+          </div>
+          <div class="prot2-card" id="card-smartscreen">
+            <div class="prot2-card-left"><div class="prot2-ico" style="background:var(--ok-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div><div class="prot2-name">SmartScreen (téléchargements)</div><div class="prot2-desc" id="ss-sub">Vérification en cours...</div></div></div>
+            <div class="prot2-card-right"><span class="pill-idle prot2-pill" id="ss-pill">--</span><button class="prot2-action-btn" id="ss-fix-btn" onclick="doFix('enable_smartscreen',this)" style="display:none">Activer</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="prot2-section">
+        <div class="prot2-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>Protection de votre vie privée</div>
+        <div class="prot2-grid">
+          <div class="prot2-card"><div class="prot2-card-left"><div class="prot2-ico" style="background:var(--ok-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div><div><div class="prot2-name">Traceurs et cookies de suivi</div><div class="prot2-desc">Supprime les cookies qui suivent votre navigation</div></div></div><div class="prot2-card-right"><button class="prot2-action-btn" onclick="doAntiTrackBtn(this)">Nettoyer</button></div></div>
+          <div class="prot2-card"><div class="prot2-card-left"><div class="prot2-ico" style="background:var(--crit-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" aria-hidden="true"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div><div><div class="prot2-name">Accès à la caméra</div><div class="prot2-desc" id="cam-sub">Chargement...</div></div></div><div class="prot2-card-right"><label class="tog"><input type="checkbox" id="tog-cam" onchange="setAccess('cam',this.checked)"><span class="tog-sl"></span></label></div></div>
+          <div class="prot2-card"><div class="prot2-card-left"><div class="prot2-ico" style="background:var(--warn-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg></div><div><div class="prot2-name">Accès au microphone</div><div class="prot2-desc" id="mic-sub">Chargement...</div></div></div><div class="prot2-card-right"><label class="tog"><input type="checkbox" id="tog-mic" onchange="setAccess('mic',this.checked)"><span class="tog-sl"></span></label></div></div>
+          <div class="prot2-card"><div class="prot2-card-left"><div class="prot2-ico" style="background:var(--acc-soft)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div><div class="prot2-name">Télémétrie Windows</div><div class="prot2-desc" id="tel-sub">Chargement...</div></div></div><div class="prot2-card-right"><label class="tog"><input type="checkbox" id="tog-tel" onchange="setTelemetry(this.checked)"><span class="tog-sl"></span></label></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="note">Le coffre de quarantaine et les outils de réparation de Windows se trouvent dans <a href="#" onclick="goSec('tools');return false" style="font-weight:700">Outils</a>.</div>
+  </div>
+</div></section>
+
+<!-- ══ APPLICATIONS ═══════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-apps"><div class="sec-in">
+  <div class="sec-h"><div><h1>Applications</h1><p>Tous vos programmes au même endroit : désinstaller, supprimer de force, empêcher le lancement au démarrage.</p></div></div>
+  <div class="grid4" id="ap-cards"></div>
+  <div class="row" style="flex-wrap:wrap;gap:12px">
+    <div class="segf" role="group" aria-label="Filtrer">
+      <button class="segb on" data-f="all" onclick="appFilter('all')">Tous <span class="cnt" id="cnt-all">--</span></button>
+      <button class="segb" data-f="start" onclick="appFilter('start')">Au démarrage <span class="cnt" id="cnt-start">--</span></button>
+      <button class="segb" data-f="upd" onclick="appFilter('upd')">Mises à jour <span class="cnt" id="cnt-upd">--</span></button>
+      <button class="segb" data-f="oem" onclick="appFilter('oem')">Fabricant <span class="cnt" id="cnt-oem">--</span></button>
+    </div>
+    <span style="flex:1"></span>
+    <label class="row" style="font-size:13px;color:var(--dim);cursor:pointer"><input type="checkbox" id="apps-tech" onchange="renderApps()">Afficher les composants Windows (mode technicien)</label>
+  </div>
+  <div class="row" style="flex-wrap:wrap" id="apps-tools">
+    <label class="srch"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="inp" id="app-search" placeholder="Rechercher un programme…" oninput="filterApps(this.value)"></label>
+    <select class="inp" id="app-sort" onchange="setAppSortSel(this.value)" title="Trier la liste"><option value="size_desc">Les plus gros d'abord</option><option value="name">Nom (A→Z)</option><option value="size_asc">Les plus petits d'abord</option></select>
+    <span id="apps-total-size" class="muted" style="font-size:12.5px"></span>
+    <button class="btn-su btn-ghost" id="btn-apps-refresh" onclick="refreshAppsTab()">Actualiser</button>
+    <button class="btn-su btn-primary" id="btn-del-sel" onclick="deleteSelectedApps()" disabled>Désinstaller la sélection</button>
+  </div>
+  <div id="app-tab-installed"><div class="card list-card" id="apps-list"></div></div>
+  <div id="app-tab-startup" style="display:none"><div class="note acc" style="margin-bottom:12px">Moins de programmes au démarrage = un PC qui démarre plus vite. Les éléments marqués <b>Inutile au démarrage</b> peuvent être désactivés sans risque : le programme reste installé.</div><div class="card list-card" id="startup-list-apps"></div></div>
+  <div id="app-tab-updates" style="display:none"><div class="card"><div class="flex-b"><div><div class="card-title" style="margin:0">Logiciels à mettre à jour <span class="prem-badge">Premium</span></div><div class="card-sub" style="margin:4px 0 0">Les anciennes versions des logiciels sont la première porte d'entrée des virus.</div></div><button class="btn-su btn-ghost" onclick="loadSoftUpdates(true)">Rechercher</button></div><div id="upd-list" style="margin-top:12px"></div></div></div>
+  <div style="display:none"><div id="app-tab-force"></div><div id="force-list"></div><button id="apptab-installed"></button><button id="apptab-startup"></button><button id="apptab-updates"></button><button id="apptab-force"></button></div>
+</div></section>
+
+<!-- ══ SANTÉ DU PC ════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-health"><div class="sec-in">
+  <div class="sec-h"><div><h1>Santé du PC</h1><p>État des disques, de la batterie et du matériel.</p></div><div class="acts"><button class="btn-su btn-ghost" onclick="loadHealth(true)">Actualiser</button></div></div>
+  <div id="hl-summary"></div>
+  <div class="grid2" id="hl-disks"><div class="card"><div class="empty-note"><span class="spin" style="width:14px;height:14px;border-width:2px;vertical-align:middle;margin-right:8px"></span>Lecture de l'état des disques…</div></div></div>
+  <div class="grid2">
+    <div class="card" id="hl-batt"><div class="card-title">Batterie</div><div class="empty-note">Chargement…</div></div>
+    <div class="card" id="hl-boot"><div class="card-title">Démarrage</div><div class="empty-note">Chargement…</div></div>
+  </div>
+  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Espace par lecteur</div><button class="btn-su btn-ghost" onclick="loadDiskInfo()">↻</button></div><div id="disk-info" style="display:flex;gap:18px;flex-wrap:wrap"></div></div>
+  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Configuration matérielle</div><button class="btn-su btn-ghost" onclick="loadSysInfo()">↻</button></div><div class="si-grid" id="sysinfo-grid"></div></div>
+</div></section>
+
+<!-- ══ RÉSEAU ═════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-network"><div class="sec-in">
+  <div class="sec-h"><div><h1>Réseau</h1><p>Appareils connectés à votre box, sécurité du Wi-Fi et vitesse internet.</p></div><div class="acts"><button class="btn-su btn-primary" id="net-scan" onclick="loadNetwork(true)">Analyser le réseau</button></div></div>
+  <div class="grid4" id="net-cards"></div>
+  <div class="net-top">
+    <div class="hero hero-sm radar-box"><div class="radar" id="net-radar"><span class="rc" style="inset:12%"></span><span class="rc" style="inset:26%"></span><span class="rc" style="inset:40%"></span><span class="rax" style="left:50%;top:0;bottom:0;width:1px"></span><span class="rax" style="top:50%;left:0;right:0;height:1px"></span><span class="rsw"></span><div id="net-blips"></div></div></div>
+    <div class="card" style="flex:1 1 420px;min-width:0"><div class="flex-b mb8"><div class="card-title" style="margin:0">Appareils connectés</div><span class="muted" id="net-meta" style="font-size:12.5px"></span></div><div class="dev-grid" id="net-devs"><div class="empty-note">Cliquez sur « Analyser le réseau ».</div></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card" id="net-wifi"><div class="card-title">Sécurité du Wi-Fi</div><div class="empty-note">Lancez l'analyse du réseau.</div></div>
+    <div class="card"><div class="flex-b"><div class="card-title" style="margin:0">Vitesse internet</div><button class="btn-su btn-ghost" id="net-speed-btn" onclick="runSpeed()">Tester</button></div><div id="net-speed" class="dim" style="margin-top:10px">Mesure la vitesse de téléchargement de votre connexion (environ 25 Mo téléchargés).</div></div>
+  </div>
+  <div class="card"><div class="card-title">Internet ne marche plus ?</div><div class="card-sub">Vide le cache DNS de Windows : règle la plupart des pages qui ne s'ouvrent plus.</div><div><button class="btn-su btn-primary" onclick="doFix('flush_dns',this)">Réparer la connexion</button></div></div>
+</div></section>
+
+<!-- ══ OUTILS ═════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-tools"><div class="sec-in">
+  <div class="sec-h"><div><h1>Outils</h1><p>Réparations et maintenance avancée de Windows.</p></div></div>
+  <div class="card" id="card-force" style="border-color:rgba(var(--red-rgb),.35)">
+    <div class="row" style="align-items:flex-start;flex-wrap:wrap">
+      <div class="su-card-ico" style="background:var(--crit-bg)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg></div>
+      <div style="flex:1 1 300px"><div class="card-title" style="margin:0">Suppression forcée</div><div class="card-sub" style="margin:4px 0 0">Pour un fichier ou un dossier que Windows refuse de supprimer : arrête les programmes qui l'utilisent, prend possession du fichier, puis le supprime. S'il reste bloqué, il est supprimé au prochain redémarrage.</div></div>
+      <span class="lvl crit">Irréversible</span>
+    </div>
+    <div class="row" style="flex-wrap:wrap;margin-top:14px">
+      <input class="inp" id="force-del-path" placeholder="Chemin du fichier ou du dossier à supprimer…" style="flex:1 1 320px">
+      <button class="btn-su btn-ghost browse-btn" onclick="browsePick('folder')">Parcourir un dossier</button>
+      <button class="btn-su btn-ghost browse-btn" onclick="browsePick('file')">Parcourir un fichier</button>
+      <button class="btn-su" onclick="doForceDelete()" style="background:var(--red);color:#fff;font-weight:800">Supprimer de force</button>
+    </div>
+    <div id="force-del-status" style="font-size:13px;margin-top:8px"></div>
+    <div id="force-del-log" style="display:none"></div>
+  </div>
+
+  <div class="card"><div class="card-title">Réparations de Windows</div>
+    <div class="tool-grid">
+      <button class="tool-btn" onclick="doRepair('sfc',this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg><div><div class="prot2-rbtn-title">Réparer les fichiers Windows</div><div class="prot2-rbtn-sub">Analyse et répare les fichiers système abîmés (SFC)</div></div></button>
+      <button class="tool-btn" onclick="doRepair('dism',this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><div><div class="prot2-rbtn-title">Réparer l'image de Windows</div><div class="prot2-rbtn-sub">Répare la source utilisée par Windows pour se réparer (DISM)</div></div></button>
+      <button class="tool-btn" onclick="doFix('flush_dns',this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg><div><div class="prot2-rbtn-title">Réparer internet</div><div class="prot2-rbtn-sub">Vide le cache DNS quand les pages ne s'ouvrent plus</div></div></button>
+      <button class="tool-btn" onclick="doFix('update_defender',this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg><div><div class="prot2-rbtn-title">Mettre à jour l'antivirus</div><div class="prot2-rbtn-sub">Télécharge les dernières signatures de Windows Defender</div></div></button>
+      <button class="tool-btn" onclick="doRepair('winsxs_analyze',this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><div><div class="prot2-rbtn-title">Mesurer les anciennes mises à jour</div><div class="prot2-rbtn-sub">Calcule la place occupée par les mises à jour remplacées (2 à 3 min)</div></div></button>
+      <button class="tool-btn" onclick="doWinsxsClean(this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg><div><div class="prot2-rbtn-title">Supprimer les anciennes mises à jour</div><div class="prot2-rbtn-sub">Libère souvent plusieurs centaines de Mo (irréversible)</div></div></button>
+      <button class="tool-btn" onclick="cleanWinOld()"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></svg><div><div class="prot2-rbtn-title">Windows.old <span class="prem-badge">Premium</span></div><div class="prot2-rbtn-sub" id="winold-sub">Ancienne version de Windows, souvent 15 à 25 Go. Retour arrière impossible ensuite.</div></div></button>
+      <button class="tool-btn" onclick="goSec('params');setTimeout(()=>{const c=document.getElementById('card-sched');if(c)c.scrollIntoView({behavior:'smooth'})},120)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><div><div class="prot2-rbtn-title">Réparations automatiques <span class="prem-badge">Premium</span></div><div class="prot2-rbtn-sub">OptiPC nettoie tout seul chaque jour ou chaque semaine</div></div></button>
+      <button class="tool-btn" onclick="makeReport()"><svg viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><div><div class="prot2-rbtn-title">Rapport technicien (PDF) <span class="prem-badge">Premium</span></div><div class="prot2-rbtn-sub">État complet du PC, à envoyer à votre technicien SecureeTech</div></div></button>
+    </div>
+  </div>
+
+  <details class="card adv" id="adv-card">
+    <summary><span class="su-card-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><span style="flex:1"><span class="card-title" style="margin:0">Réglages avancés</span><span class="muted" style="display:block;font-size:13px">Mémoire vive, mémoire virtuelle, mode d'alimentation, effets visuels, services</span></span><span class="adv-chev">▾</span></summary>
+    <div class="adv-grid">
+      <div class="adv-it"><div class="adv-t">Mémoire vive (RAM)</div><div class="muted" style="font-size:13px" id="ram-desc">--</div><div class="ram-bar-wrap"><div class="ram-bar-fill" id="ram-bar"></div></div><div class="row"><button class="btn-su btn-primary" onclick="doRamOptimize()">Libérer la RAM</button></div></div>
+      <div class="adv-it"><div class="adv-t">Mémoire virtuelle</div><div class="muted" style="font-size:13px" id="virt-desc">Espace disque utilisé comme RAM d'appoint</div><div id="virt-bar-wrap" class="ram-bar-wrap"><div id="virt-bar" class="ram-bar-fill"></div></div><div class="muted" style="font-size:12.5px" id="virt-detail">--</div><div style="display:flex;gap:6px;flex-wrap:wrap" id="vm-btns"><button class="vm-size-btn" onclick="setVirtMem(0,this)">Auto</button><button class="vm-size-btn" onclick="setVirtMem(2048,this)">2 Go</button><button class="vm-size-btn" onclick="setVirtMem(4096,this)">4 Go</button><button class="vm-size-btn" onclick="setVirtMem(8192,this)">8 Go</button></div></div>
+      <div class="adv-it"><div class="adv-t">Mode d'alimentation</div><div class="pp-list" id="pp-list"><div class="muted">--</div></div></div>
+      <div class="adv-it"><div class="adv-t">Effets visuels</div><div class="muted" style="font-size:13px">Moins d'animations Windows = un PC plus réactif</div><div class="row" style="flex-wrap:wrap"><button class="btn-su btn-green" onclick="doVisualFX('reduce')">Réduire les effets</button><button class="btn-su btn-ghost" onclick="doVisualFX('balanced')">Restaurer</button></div></div>
+      <div class="adv-it" style="grid-column:1/-1"><div class="flex-b"><div class="adv-t">Services Windows</div><button class="btn-su btn-ghost" onclick="loadServices()">Actualiser</button></div><div id="svc-list"></div></div>
+    </div>
+    <div style="display:none"><div id="perf-boot"></div><div id="startup-list"></div><span id="stat-ram-x"></span></div>
+  </details>
+  <div class="grid2">
+    <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Points de restauration</div><div class="row"><button class="btn-su btn-ghost" onclick="openRestore()">Revenir en arrière…</button><button class="btn-su btn-primary" onclick="createRestorePoint()">Créer</button></div></div><div class="card-sub">Une photo de Windows à laquelle on peut revenir si un réglage pose problème.</div><div id="rp-list"></div></div>
+    <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Coffre de quarantaine</div><div class="row"><button class="btn-su btn-ghost" onclick="loadQuarantine()">↻</button><button class="btn-su btn-ghost" onclick="clearWhitelist()">Vider les exceptions</button></div></div><div class="card-sub">Fichiers isolés par l'analyse. Ils peuvent être restaurés à tout moment en cas de fausse alerte.</div><div id="quar-list" style="max-height:260px;overflow-y:auto"></div></div>
+  </div>
+  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Registre Windows</div><div class="row"><button class="btn-su btn-ghost" onclick="doRegScan()">Analyser</button><button class="btn-su btn-red" id="btn-clean-reg" onclick="ifPro(doRegClean,'Le nettoyage du registre est réservé à la version Premium.')" disabled>Nettoyer · Premium</button></div></div><div class="card-sub">Entrées laissées par des logiciels désinstallés. Une sauvegarde est créée avant tout nettoyage.</div><div id="reg-result" style="max-height:260px;overflow-y:auto;font-size:13px;color:var(--dim)">Cliquez sur Analyser.</div></div>
+</div></section>
+
+<!-- ══ PARAMÈTRES ═════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-params"><div class="sec-in">
+  <div class="sec-h"><div><h1>Paramètres</h1><p>Apparence, notifications, licence et planification.</p></div></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Apparence</div>
+      <div class="setting-row"><div><div class="t">Thème</div><div class="d">Sombre par défaut</div></div><div class="seg" id="set-theme"><button data-v="light" onclick="setTheme('light')">Clair</button><button data-v="dark" onclick="setTheme('dark')">Sombre</button><button data-v="auto" onclick="setTheme('auto')">Comme Windows</button></div></div>
+      <div class="setting-row"><div><div class="t">Taille du texte</div><div class="d">Agrandit tout le logiciel</div></div><div class="seg" id="set-zoom"><button data-v="1" onclick="setZoom('1')">Normal</button><button data-v="1.12" onclick="setZoom('1.12')">Grand</button><button data-v="1.25" onclick="setZoom('1.25')">Très grand</button></div></div>
+      <div class="setting-row"><div><div class="t">Sons de l'interface</div><div class="d">Petit son lors des changements d'onglet</div></div><label class="tog-mini"><input type="checkbox" id="tog-sounds" checked onchange="setNotif('sounds',this.checked)"><span class="tog-mini-sl"></span></label></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Notifications</div>
+      <div class="setting-row"><div><div class="t">Rappels Premium</div><div class="d">Propositions de passer à la version Premium</div></div><label class="tog-mini"><input type="checkbox" id="tog-notif-pro" checked onchange="setNotif('notifPro',this.checked)"><span class="tog-mini-sl"></span></label></div>
+      <div class="setting-row"><div><div class="t">Fin de nettoyage</div><div class="d">Message indiquant l'espace libéré</div></div><label class="tog-mini"><input type="checkbox" id="tog-notif-clean" checked onchange="setNotif('notifClean',this.checked)"><span class="tog-mini-sl"></span></label></div>
+      <div class="setting-row"><div><div class="t">Fin d'analyse antivirus</div><div class="d">Résultat affiché à la fin d'une analyse</div></div><label class="tog-mini"><input type="checkbox" id="tog-notif-scan" checked onchange="setNotif('notifScan',this.checked)"><span class="tog-mini-sl"></span></label></div>
+      <div class="setting-row"><div><div class="t">Alertes de menace</div><div class="d">Avertissement si un virus ou un logiciel espion est trouvé</div></div><label class="tog-mini"><input type="checkbox" id="tog-notif-threat" checked onchange="setNotif('notifThreat',this.checked)"><span class="tog-mini-sl"></span></label></div>
+      <div class="setting-row"><div><div class="t">Message au démarrage de Windows</div><div class="d">Bulle « OptiPC veille sur votre PC » près de l'horloge</div></div><label class="tog-mini"><input type="checkbox" id="tog-notif-startup" checked onchange="setNotif('notifStartup',this.checked)"><span class="tog-mini-sl"></span></label></div>
+      <div class="setting-row"><div><div class="t">Ouvrir la fenêtre au démarrage</div><div class="d">Désactivé : OptiPC reste actif près de l'horloge</div></div><label class="tog-mini"><input type="checkbox" id="tog-open-startup" checked onchange="setNotif('openAtStartup',this.checked)"><span class="tog-mini-sl"></span></label></div>
+    </div>
+  </div>
+  <div class="card" id="card-compare"><div class="card-title">Version gratuite ou Premium ?</div><div class="card-sub">OptiPC reste gratuit aussi longtemps que vous le souhaitez. Premium sert à <b>agir</b> sur ce que la version gratuite se contente de détecter.</div><div id="plan-compare"></div></div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Licence OptiPC</div>
+      <div id="lic-banner" class="note" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+        <div><div id="lic-plan-label" style="font-size:15px;font-weight:800">Version gratuite</div><div id="lic-plan-sub" class="dim" style="font-size:12.5px">Fonctionnalités limitées</div></div>
+        <div class="seg"><button id="btn-lic-free" onclick="showLicFree()">Gratuit</button><button id="btn-lic-pro" onclick="showLicPro()">Premium</button></div>
+      </div>
+      <div id="lic-activate-zone">
+        <div class="dim" style="font-size:13px;margin-bottom:8px">Entrez votre clé pour activer Premium</div>
+        <div class="row" style="margin-bottom:6px"><input class="inp" id="lic-key" placeholder="ST-XXXX-XXXX-XXXX" style="flex:1;letter-spacing:1.5px;font-family:Consolas,monospace"><button class="btn-su btn-primary" onclick="activateLicense()">Activer</button></div>
+        <div id="lic-status" style="font-size:13px"></div>
+      </div>
+      <div id="lic-pro-zone" style="display:none">
+        <div id="lic-pro-details" class="dim" style="font-size:13.5px;line-height:2;margin-bottom:12px"></div>
+        <button class="btn-su btn-red" onclick="revokeLicense()">Retirer la clé et repasser en version gratuite</button>
+      </div>
+    </div>
+    <div class="card" id="card-sched">
+      <div class="card-title">Nettoyage automatique <span class="prem-badge">Premium</span></div>
+      <div class="muted" style="font-size:12px;font-weight:700;margin-bottom:8px">FRÉQUENCE</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="sched-btn active" id="sched-remove" onclick="setSchedMode('remove',this)">Désactivé</button>
+        <button class="sched-btn" id="sched-daily" onclick="setSchedMode('daily',this)">Chaque jour</button>
+        <button class="sched-btn" id="sched-weekly" onclick="setSchedMode('weekly',this)">Chaque semaine</button>
+        <button class="sched-btn" id="sched-startup" onclick="setSchedMode('startup',this)">Au démarrage</button>
+      </div>
+      <div id="sched-time-row" class="note acc" style="display:none;align-items:center;gap:10px;margin-bottom:12px"><span style="font-weight:600">Heure :</span><input type="time" id="sched-time" value="03:00" oninput="updateSchedPreview()" class="inp" style="width:130px;font-weight:700"></div>
+      <div id="sched-preview" style="font-size:13px;color:var(--acc-text);margin-bottom:8px;min-height:18px"></div>
+      <div class="muted" style="font-size:12.5px;margin-bottom:12px;line-height:1.5">Si le PC était éteint à l'heure prévue, le nettoyage se fait au prochain démarrage.</div>
+      <button class="btn-su btn-primary" onclick="ifPro(applySchedule,'Le nettoyage automatique est réservé à la version Premium.')">Enregistrer</button>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Assistance</div>
+      <div class="card-sub">Un technicien SecureeTech vous rappelle, du lundi au vendredi de 10 h à 17 h.</div>
+      <div class="row" style="flex-wrap:wrap"><button class="btn-su btn-primary" onclick="openCallback()">Être rappelé par un technicien</button><span class="dim">ou appelez le <b style="color:var(--acc-text)">05 54 54 23 43</b></span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">À propos</div>
+      <div class="row" style="flex-wrap:wrap;margin-bottom:12px"><button class="btn-su btn-ghost" onclick="showCGU()">Conditions générales</button><button class="btn-su btn-ghost" onclick="showConsentGate()">Contrat de licence</button><button class="btn-su btn-ghost" onclick="showConsentGate();showConsentDoc('rgpd')">Confidentialité</button><button class="btn-su btn-primary" onclick="checkUpdate(true)">Rechercher une mise à jour</button></div>
+      <div class="dim" style="font-size:13.5px;line-height:2">
+        <div><b style="color:var(--text);font-size:15px">OptiPC <span class="opti-ver">2.0</span></b> — par SecureeTech</div>
+        <div>Logiciel d'optimisation et de protection du PC</div>
+        <div><a href="https://www.secureetech.com" target="_blank">secureetech.com</a> · <a href="mailto:optipc@secureetech.com">optipc@secureetech.com</a></div>
+      </div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.8" id="about-editeur"></div>
+    </div>
+  </div>
+  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Historique d'activité</div><button class="btn-su btn-ghost" onclick="clearLogs()">Effacer</button></div><div id="activity-log"></div></div>
+</div></section>
+
+</div>
+</main>
+</div>
+
+<!-- ══ FENÊTRES ═══════════════════════════════════════════════════════════ -->
+<div id="loading"><div class="spin"></div><div class="load-msg" id="load-msg"></div></div>
+<div id="toasts"></div>
+<div id="modal"><div class="modal-box"><div class="modal-title" id="modal-title"></div><div class="modal-msg" id="modal-msg"></div><div class="modal-btns"><button class="modal-btn-cancel" onclick="closeModal()">Annuler</button><button class="modal-btn-confirm" id="modal-ok">Confirmer</button></div></div></div>
+<div id="success-ov"><div class="success-box"><div class="success-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.5" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg></div><div class="success-title" id="success-title"></div><div class="dim" style="font-size:13px;margin-top:5px" id="success-sub"></div></div></div>
+
+<div id="pro-gate-ov"><div class="pro-gate-box">
+  <button class="ov-close" onclick="closeProGate()" aria-label="Fermer">&times;</button>
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="#E8650C" style="display:block;margin:0 auto 10px" aria-hidden="true"><path d="M3 18h18l-1.5-10-5 4L12 5l-2.5 7-5-4z"/></svg>
+  <div style="font-size:19px;font-weight:800;margin-bottom:8px">Fonction Premium</div>
+  <div class="dim" style="font-size:14px;margin-bottom:14px;line-height:1.6" id="pro-gate-msg"></div>
+  <div class="plans"><div class="plan"><s>13,80 €</s><b>6,90 €</b><span>par mois</span></div><div class="plan best"><s>99,80 €</s><b>49,90 €</b><span>par an</span></div><div class="plan"><s>179,80 €</s><b>89,90 €</b><span>2 ans</span></div></div>
+  <div style="font-size:12px;font-weight:800;color:var(--acc-text);margin-bottom:12px">−50 % · offre limitée</div>
+  <button id="pro-gate-trial" class="trial-cta" onclick="closeProGate();openTrial()">Essayer Premium gratuitement 5 jours</button>
+  <div class="row" style="justify-content:center;flex-wrap:wrap"><button class="btn-su btn-ghost" onclick="closeProGate();goActivate()">J'ai une clé</button><button class="btn-su btn-primary" onclick="closeProGate();openBuyPage()">Passer en Premium</button></div>
+</div></div>
+
+<div id="trial-ov" onclick="if(event.target===this)closeTrial()"><div class="trial-box">
+  <button class="ov-close" onclick="closeTrial()" aria-label="Fermer">&times;</button>
+  <div id="trial-form-zone">
+    <div class="trial-gift">🎁 OFFERT</div>
+    <div style="font-size:21px;font-weight:800;margin-bottom:6px">5 jours de Premium gratuits</div>
+    <div class="dim" style="font-size:13.5px;margin-bottom:14px;line-height:1.6">Nettoyage complet sans limite, suppression des menaces, doublons et gros fichiers, mises à jour des logiciels. Sans carte bancaire : l'essai s'arrête tout seul.</div>
+    <div class="row" style="gap:10px"><label class="trial-lbl" style="flex:1">Nom<input class="inp" id="tr-nom" autocomplete="family-name"></label><label class="trial-lbl" style="flex:1">Prénom<input class="inp" id="tr-prenom" autocomplete="given-name"></label></div>
+    <label class="trial-lbl">Téléphone<input class="inp" id="tr-tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></label>
+    <div class="trial-lbl" style="margin-top:4px">Souhaitez-vous être rappelé(e) par un conseiller SecureeTech ?</div>
+    <div style="display:flex;gap:22px;margin:6px 0 10px;justify-content:center"><label class="trial-radio"><input type="radio" name="tr-rappel" value="oui"> Oui</label><label class="trial-radio"><input type="radio" name="tr-rappel" value="non"> Non</label></div>
+    <label class="cs-check" style="margin:0 0 8px;text-align:left"><input type="checkbox" id="tr-news" onchange="document.getElementById('tr-email-row').style.display=this.checked?'':'none'"><span>J'accepte de recevoir par e-mail les nouveautés et les offres de SecureeTech (désinscription en un clic).</span></label>
+    <label class="trial-lbl" id="tr-email-row" style="display:none">Adresse e-mail<input class="inp" id="tr-email" type="email" autocomplete="email"></label>
+    <div id="trial-err" style="display:none;color:var(--red);font-size:13px;font-weight:700;margin-bottom:10px"></div>
+    <button class="trial-cta shine" id="trial-go" onclick="startTrial()">Activer mes 5 jours gratuits</button>
+    <div class="muted" style="font-size:12px">Aucun paiement. Un seul essai par ordinateur.</div>
+  </div>
+  <div id="trial-ok-zone" style="display:none">
+    <div style="font-size:34px;margin-bottom:6px">✅</div>
+    <div style="font-size:19px;font-weight:800;margin-bottom:8px">OptiPC Premium est activé !</div>
+    <div id="trial-ok-msg" class="dim" style="font-size:14px;line-height:1.7;margin-bottom:16px"></div>
+    <button class="trial-cta" onclick="closeTrial()">Commencer</button>
+  </div>
+</div></div>
+
+<div class="ov" id="cb-ov" onclick="if(event.target===this)closeCallback()"><div class="ov-box trial-box">
+  <button class="ov-close" onclick="closeCallback()" aria-label="Fermer">&times;</button>
+  <div style="font-size:19px;font-weight:800;margin-bottom:6px">Être rappelé par un technicien</div>
+  <div class="dim" style="font-size:13.5px;margin-bottom:14px">Du lundi au vendredi, de 10 h à 17 h.</div>
+  <label class="trial-lbl">Prénom<input class="inp" id="cb-prenom" autocomplete="given-name"></label>
+  <label class="trial-lbl">Téléphone<input class="inp" id="cb-tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></label>
+  <label class="trial-lbl">Votre besoin<select class="inp" id="cb-sujet"><option>Mon PC est lent</option><option>J'ai un virus ou une alerte</option><option>Une question sur Premium</option><option>Activer ma licence</option><option>Autre</option></select></label>
+  <div id="cb-msg" style="font-size:13px;font-weight:700;margin-bottom:10px"></div>
+  <button class="trial-cta" id="cb-go" onclick="sendCallback()">Envoyer ma demande</button>
+</div></div>
+
+<div class="ov" id="fix-ov"><div class="ov-box" style="max-width:480px;text-align:center">
+  <div style="font-size:19px;font-weight:800">Tout réparer</div>
+  <div class="dim" style="font-size:13.5px;margin-top:4px" id="fix-sub">OptiPC s'occupe de tout, ne fermez pas la fenêtre.</div>
+  <div class="fix-steps" id="fix-steps"></div>
+  <button class="btn-su btn-primary" id="fix-close" style="display:none;width:100%;margin-top:8px" onclick="document.getElementById('fix-ov').classList.remove('show')">Fermer</button>
+</div></div>
+
+<div id="upd-bar"><div class="upd-ico">⬇️</div><div class="upd-txt"><div class="upd-title" id="upd-title">Une nouvelle version d'OptiPC est disponible</div><div class="upd-sub" id="upd-sub"></div></div><button class="upd-btn upd-later" id="upd-later" onclick="dismissUpdate()">Plus tard</button><button class="upd-btn upd-go" id="upd-go" onclick="installUpdate()">Installer</button></div>
+
+<div id="consent-ov"><div class="cs-box">
+  <div class="cs-title">Avant de commencer</div>
+  <div class="cs-sub" id="cs-sub">Merci de prendre connaissance de ces deux documents.</div>
+  <div class="cs-tabs"><button class="cs-tab active" id="cs-tab-cluf" onclick="showConsentDoc('cluf')">Contrat de licence</button><button class="cs-tab" id="cs-tab-rgpd" onclick="showConsentDoc('rgpd')">Vos données personnelles</button></div>
+  <div class="cs-doc" id="cs-doc"></div>
+  <label class="cs-check"><input type="checkbox" id="cs-ok" onchange="document.getElementById('cs-accept').disabled=!this.checked"><span>J'ai lu et j'accepte le contrat de licence utilisateur final ainsi que la politique de confidentialité d'OptiPC.</span></label>
+  <div class="cs-btns"><button class="cs-accept" id="cs-accept" disabled onclick="acceptConsent()">Accepter et utiliser OptiPC</button><button class="cs-refuse" onclick="refuseConsent()">Refuser et fermer</button></div>
+  <div class="cs-foot">Une question ? Appelez le <b>05 54 54 23 43</b>. Ces documents restent consultables dans Paramètres, rubrique À propos.</div>
+</div></div>
+
+<div class="ov" id="welcome-ov" onclick="if(event.target===this)closeWelcome()"><div class="ov-box" style="max-width:420px;text-align:center">
+  <button class="ov-close" onclick="closeWelcome()" aria-label="Fermer">&times;</button>
+  <img src="logo.png" alt="" width="64" height="64" style="display:block;margin:0 auto 10px">
+  <div style="font-size:21px;font-weight:800;margin-bottom:6px">Bienvenue sur OptiPC 2.0</div>
+  <div class="dim" style="font-size:14px;margin-bottom:16px">Passez en <b style="color:var(--acc-text)">Premium</b> pour débloquer toutes les fonctions.</div>
+  <div class="note" style="text-align:left;margin-bottom:16px">
+    <div style="font-size:11.5px;font-weight:800;color:var(--green);letter-spacing:.05em;margin-bottom:6px">INCLUS GRATUITEMENT</div>
+    <div style="font-size:13.5px;line-height:1.9">✅ Analyse et nettoyage des fichiers inutiles<br>✅ Santé du disque et appareils du réseau<br>✅ Détection des virus et logiciels espions<br>✅ Désinstallation des logiciels</div>
+    <div style="font-size:11.5px;font-weight:800;color:var(--acc-text);letter-spacing:.05em;margin:10px 0 6px;padding-top:10px;border-top:1px solid var(--border)">AVEC PREMIUM</div>
+    <div style="font-size:13.5px;line-height:1.9">⭐ <b>Suppression et quarantaine des menaces</b><br>⭐ Nettoyage sans limite et automatique<br>⭐ Mises à jour des logiciels en un clic<br>⭐ Assistance téléphonique prioritaire</div>
+  </div>
+  <button id="welcome-trial" class="trial-cta" onclick="closeWelcome();openTrial()">Essayer Premium gratuitement 5 jours</button>
+  <button class="trial-cta" style="background:var(--bar)" onclick="closeWelcome();openBuyPage()">Découvrir Premium · 49,90 €/an</button>
+  <button class="wl-secondary" onclick="closeWelcome()">Continuer en version gratuite</button>
+  <button onclick="closeWelcome();goActivate()" style="background:none;border:none;color:var(--acc-text);font-size:13px;padding:10px 4px 0;text-decoration:underline">J'ai déjà une clé Premium</button>
+</div></div>
+
+<div id="report"></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
