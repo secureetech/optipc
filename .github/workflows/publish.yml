@@ -1,0 +1,41 @@
+# Publie sur ce dépôt (onglet Releases) l'installateur OptiPC déjà compilé et signé
+# par le workflow « OptiPC release » du dépôt secureetech-pdf.
+# Lancement : Actions > « Publier sur GitHub » > Run workflow (version, ex. 2.0.0).
+name: Publier sur GitHub
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version d'OptiPC (ex. 2.0.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    steps:
+      - name: Récupération et vérification de l'installateur signé
+        shell: pwsh
+        run: |
+          $v = "${{ github.event.inputs.version }}".Trim().TrimStart('v')
+          New-Item -ItemType Directory -Force Setup | Out-Null
+          Invoke-WebRequest "https://api.secureetech.com/v1/optipc/download/OptiPC-Setup-$v.exe" -OutFile "Setup/OptiPC-Setup-$v.exe"
+          $s = Get-AuthenticodeSignature "Setup/OptiPC-Setup-$v.exe"
+          Write-Host "$($s.Status) — $($s.SignerCertificate.Subject)"
+          if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notmatch 'H2OCONSULTING') { throw "Signature invalide" }
+          Copy-Item "Setup/OptiPC-Setup-$v.exe" Setup/OptiPC-Setup.exe
+          "V=$v" >> $env:GITHUB_ENV
+
+      - name: Publication
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.V }}
+          name: OptiPC ${{ env.V }}
+          make_latest: true
+          body: "OptiPC ${{ env.V }} — installateur signé H2OCONSULTING - FZCO. Téléchargement permanent de la dernière version : https://github.com/secureetech/optipc/releases/latest/download/OptiPC-Setup.exe"
+          files: |
+            Setup/OptiPC-Setup-${{ env.V }}.exe
+            Setup/OptiPC-Setup.exe
