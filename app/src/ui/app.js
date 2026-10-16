@@ -277,7 +277,7 @@ async function startHomeScan(){
     const t=(Date.now()-t0)/1000, f=done/total, curve=100*(1-Math.exp(-t/45));
     const target=Math.min(99,f*85+(1-f)*curve);
     shown=Math.min(99,Math.max(shown+0.04,target));
-    $('orb-pct').textContent=Math.round(shown)+' %'; $('scan-bar').style.width=shown+'%';
+    $('orb-pct').textContent=Math.round(shown)+'\u202F%'; $('scan-bar').style.width=shown+'%';
     const sec=Math.round(t); $('scan-count').textContent=done+' / '+total+' contrôles terminés · '+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
   },200);
   const R={}; window._scanR=R;
@@ -414,7 +414,7 @@ async function startOptimize(){
   S.push(['score','Nouveau score']);
   $('opt-steps').innerHTML=stepsHtml(S,'os-');
   const before=((_scanR||{}).junk||{}).score||60;
-  let doneN=0; const tick=()=>{ doneN++; const p=Math.round(doneN/S.length*100); $('opt-bar').style.width=p+'%'; $('orb-pct').textContent=p+' %'; };
+  let doneN=0; const tick=()=>{ doneN++; const p=Math.round(doneN/S.length*100); $('opt-bar').style.width=p+'%'; $('orb-pct').textContent=p+'\u202F%'; };
   $('orb-pct').textContent='0 %'; $('orb-scan-lbl').textContent='OPTIMISATION'; $('opt-bar').style.width='0%';
   const K={freed:0,files:0,start:0,sec:0,limited:0,recycled:0};
   const step=async(k,fn)=>{ stepSet('os-',k,'run'); try{ const f=await fn(); stepSet('os-',k,'done',f||''); }catch(e){ stepSet('os-',k,'err','non effectué'); } tick(); };
@@ -1147,7 +1147,8 @@ window.onload=async()=>{
   if(!ok)setTimeout(showConsentGate,300); else if(!_isPro)setTimeout(()=>{ if(_trialAvailable())firstLaunchOffer(); else showWelcomeOnce(); },2500);
   pollPerf(); loadScheduleStatus(); loadNotifSetting();
   loadHomeStatus();
-  setTimeout(()=>checkUpdate(false),25000);
+  // Recherche silencieuse d'une mise à jour à chaque ouverture : proposée si disponible.
+  setTimeout(async()=>{ const u=await checkUpdate(false); if(u)showUpdatePrompt(u); },4000);
   setInterval(()=>checkUpdate(false),6*3600*1000);
   setInterval(()=>{ if(!document.hidden)loadCleanLog(); },180000);
   setInterval(()=>{ if(!document.hidden)loadSecStatusQuiet(); },600000);
@@ -1210,4 +1211,12 @@ function repairBrowsers(){
     try{ const r=await API.post('/api/browsers/repair',{},180000); loading(false); toast(r.msg||'Terminé',r.ok?'ok':'err'); addLog('Navigateurs : '+(r.msg||'')); loadBrowserHijack(); }
     catch(e){ loading(false); toast('Erreur pendant la réparation','err'); }
   });
+}
+
+/* ── Mise à jour proposée à l'ouverture ───────────────────────────── */
+function showUpdatePrompt(u){
+  if(!u||!u.version)return;
+  try{ if(sessionStorage.getItem('optipc_upd_asked')===u.version)return; sessionStorage.setItem('optipc_upd_asked',u.version); }catch(e){}
+  showConfirm('🎉 Nouvelle version d’OptiPC : '+esc(u.version),(u.notes?esc(u.notes)+'<br><br>':'')+'L’installation prend moins d’une minute. OptiPC se ferme puis redémarre tout seul, vos réglages et votre licence sont conservés.',()=>installUpdate());
+  setTimeout(()=>{ const ok=document.getElementById('_mokbtn'); if(ok)ok.textContent='Installer maintenant'; const c=document.getElementById('_mcancelbtn'); if(c)c.textContent='Plus tard'; },30);
 }

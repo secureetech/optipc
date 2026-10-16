@@ -4133,7 +4133,7 @@ function Test-UpdateDue($intervalDays) {
 
 function Get-OptiPCUpdate($force) {
     $cur = Get-OptiPCVersion
-    if(-not $force -and -not (Test-UpdateDue 30)){
+    if(-not $force -and -not (Test-UpdateDue (1/24))){
         return @{ checked = $false; update_available = $false; current = $cur; reason = 'deja_verifie' }
     }
     $mid = ''
