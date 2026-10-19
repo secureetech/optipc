@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Lanceur sans droits inscrit dans la cle Run : visible dans Gestionnaire des taches > Applications de demarrage. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>OptiPCDemarrage</AssemblyName>
+    <RootNamespace>OptiPCDemarrage</RootNamespace>
+    <ApplicationIcon>..\src\assets\optipc.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>2.0.0</Version>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Company>H2OCONSULTING - FZCO</Company>
+    <Product>OptiPC</Product>
+    <!-- Nom affiche par le Gestionnaire des taches -->
+    <AssemblyTitle>OptiPC</AssemblyTitle>
+    <Description>OptiPC</Description>
+    <Copyright>SecureeTech</Copyright>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+</Project>

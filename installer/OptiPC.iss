@@ -57,9 +57,15 @@ Name: "desktopicon"; Description: "Créer un raccourci sur le Bureau"; GroupDesc
 [Files]
 Source: "..\build\OptiPC.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\build\OptiPC.exe.config"; DestDir: "{app}"; Flags: ignoreversion
+; Lanceur sans droits inscrit dans la cle Run (visible dans Gestionnaire des taches > Demarrage)
+Source: "..\build\OptiPCDemarrage.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "OptiPC.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; Moteur d'affichage de Windows (WebView2) : installe seulement s'il manque.
 Source: "MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: NeedsWebView2
+
+[Registry]
+; Demarrage avec Windows pour tous les utilisateurs : le lanceur demarre la tache planifiee « OptiPC ».
+Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "OptiPC"; ValueData: """{app}\OptiPCDemarrage.exe"""; Flags: uninsdeletevalue
 
 [InstallDelete]
 ; Restes de la V1 devenus inutiles
@@ -84,6 +90,7 @@ Filename: "{app}\{#AppExe}"; Flags: nowait runascurrentuser; Check: WizardSilent
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /T /IM {#AppExe}"; Flags: runhidden; RunOnceId: "KillOptiPC"
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM OptiPCDemarrage.exe"; Flags: runhidden; RunOnceId: "KillLanceur"
 Filename: "{sys}\schtasks.exe"; Parameters: "/Delete /TN ""OptiPC"" /F"; Flags: runhidden; RunOnceId: "DelTask"
 Filename: "{sys}\reg.exe"; Parameters: "delete ""HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"" /v OptiPC /f"; Flags: runhidden; RunOnceId: "DelRun"
 
@@ -106,6 +113,7 @@ var
 begin
   { Fermer OptiPC (V1 ou 2.0) s'il tourne, sinon OptiPC.exe est verrouille }
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /T /IM OptiPC.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM OptiPCDemarrage.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
   Sleep(1000);
 end;
 

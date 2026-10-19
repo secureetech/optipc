@@ -15,6 +15,10 @@ namespace OptiPC
             bool atLogon = args.Any(a => string.Equals(a, "-AuDemarrage", StringComparison.OrdinalIgnoreCase));
             bool silent = args.Any(a => string.Equals(a, "-Silent", StringComparison.OrdinalIgnoreCase));
 
+            // Le client a desactive OptiPC dans Gestionnaire des taches > Applications de demarrage :
+            // on respecte son choix (la tache planifiee de l'ouverture de session ne passe pas outre).
+            if (atLogon && DemarrageDesactiveParLeClient()) return;
+
             bool created;
             using (var mutex = new Mutex(true, "Local\\OptiPC2_Instance", out created))
             {
@@ -40,6 +44,25 @@ namespace OptiPC
                 Application.Run(new OptiApp(atLogon, silent));
                 GC.KeepAlive(mutex);
             }
+        }
+
+        // Entree « OptiPC » de la cle Run desactivee dans le Gestionnaire des taches :
+        // StartupApproved\Run contient alors une valeur dont le premier octet est impair (03).
+        static bool DemarrageDesactiveParLeClient()
+        {
+            const string Cle = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
+            foreach (var racine in new[] { Microsoft.Win32.Registry.CurrentUser, Microsoft.Win32.Registry.LocalMachine })
+            {
+                try
+                {
+                    using (var k = racine.OpenSubKey(Cle))
+                    {
+                        if (k?.GetValue("OptiPC") is byte[] etat && etat.Length > 0 && (etat[0] & 1) == 1) return true;
+                    }
+                }
+                catch { }
+            }
+            return false;
         }
     }
 }

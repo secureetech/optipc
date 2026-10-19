@@ -1211,6 +1211,17 @@ function Register-OptiStartup($exe){
             Register-ScheduledTask -TaskName 'OptiPC' -Action $act -Trigger $trg -Settings $set -Principal $pri -Force -EA Stop | Out-Null
         }
         if(-not (Get-ScheduledTask -TaskName 'OptiPC' -EA SilentlyContinue)){ return @{ok=$false;installed=$true;error='tache OptiPC absente apres inscription'} }
+        # Entree visible dans Gestionnaire des taches > Applications de demarrage : le lanceur
+        # sans droits (OptiPCDemarrage.exe) demarre la tache. On ne touche pas a StartupApproved :
+        # si le client l'a desactivee, elle reste desactivee.
+        $lanceur = Join-Path (Split-Path -Parent $e) 'OptiPCDemarrage.exe'
+        if(Test-Path -LiteralPath $lanceur){
+            $run = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
+            $voulu = '"' + $lanceur + '"'
+            if([string](Get-ItemProperty $run -Name 'OptiPC' -EA SilentlyContinue).OptiPC -ne $voulu){
+                Set-ItemProperty $run -Name 'OptiPC' -Value $voulu -EA Stop
+            }
+        }
         return @{ok=$true;installed=$true}
     }catch{ return @{ok=$false;installed=$true;error=$_.Exception.Message} }
 }
