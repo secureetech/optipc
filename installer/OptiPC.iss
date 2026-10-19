@@ -71,11 +71,13 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{group}\Désinstaller {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
-; Le demarrage automatique (tache planifiee "OptiPC" -AuDemarrage) est cree
-; par OptiPC lui-meme au premier lancement.
+; Le demarrage automatique (tache planifiee "OptiPC" -AuDemarrage) est cree ici, par
+; l'installateur qui a deja les droits administrateur, y compris lors des mises a jour
+; silencieuses. OptiPC la recree au besoin a chaque lancement (Register-OptiStartup).
 
 [Run]
 Filename: "{tmp}\MicrosoftEdgeWebview2Setup.exe"; Parameters: "/silent /install"; StatusMsg: "Installation du moteur d'affichage de Windows…"; Flags: waituntilterminated; Check: NeedsWebView2
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -Command ""$a=New-ScheduledTaskAction -Execute '{app}\{#AppExe}' -Argument '-AuDemarrage'; $t=New-ScheduledTaskTrigger -AtLogOn; $s=New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero); $p=New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Highest; Register-ScheduledTask -TaskName 'OptiPC' -Action $a -Trigger $t -Settings $s -Principal $p -Force"""; StatusMsg: "Lancement automatique au démarrage de Windows…"; Flags: runhidden waituntilterminated
 Filename: "{app}\{#AppExe}"; Description: "Lancer {#AppName}"; Flags: nowait postinstall skipifsilent runascurrentuser
 ; Mise a jour silencieuse lancee par OptiPC : on le relance automatiquement
 Filename: "{app}\{#AppExe}"; Flags: nowait runascurrentuser; Check: WizardSilent

@@ -71,7 +71,16 @@ namespace OptiPC
             // Inscription au demarrage de Windows (version installee uniquement).
             Task.Run(() =>
             {
-                try { _engine.RunScript("param($e) Register-OptiStartup $e | Out-Null", Application.ExecutablePath); }
+                try
+                {
+                    if (!_engine.WaitReady(120000) || !_engine.IsReady)
+                    {
+                        Log.Write("Inscription au demarrage impossible : moteur non demarre (" + (_engine.StartError ?? "?") + ")");
+                        return;
+                    }
+                    var r = _engine.RunScript("param($e) $r = Register-OptiStartup $e; if(-not $r.ok){ 'ECHEC : ' + [string]$r.error }", Application.ExecutablePath).LastOrDefault(x => x != null);
+                    if (r != null) Log.Write("Inscription au demarrage " + r);
+                }
                 catch (Exception ex) { Log.Error("Inscription au demarrage", ex); }
             });
 

@@ -1202,12 +1202,15 @@ function Register-OptiStartup($exe){
             $need = -not ($a -and ([string]$a.Execute) -ieq $e -and ([string]$a.Arguments) -match '-AuDemarrage')
         }
         if($need){
+            # Meme definition que l'installateur (OptiPC.iss) : a l'ouverture de session de
+            # tout membre du groupe Utilisateurs (SID S-1-5-32-545, independant de la langue).
             $act = New-ScheduledTaskAction -Execute $e -Argument '-AuDemarrage'
-            $trg = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
+            $trg = New-ScheduledTaskTrigger -AtLogOn
             $set = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit ([TimeSpan]::Zero)
-            $pri = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Highest
+            $pri = New-ScheduledTaskPrincipal -GroupId 'S-1-5-32-545' -RunLevel Highest
             Register-ScheduledTask -TaskName 'OptiPC' -Action $act -Trigger $trg -Settings $set -Principal $pri -Force -EA Stop | Out-Null
         }
+        if(-not (Get-ScheduledTask -TaskName 'OptiPC' -EA SilentlyContinue)){ return @{ok=$false;installed=$true;error='tache OptiPC absente apres inscription'} }
         return @{ok=$true;installed=$true}
     }catch{ return @{ok=$false;installed=$true;error=$_.Exception.Message} }
 }
