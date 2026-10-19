@@ -510,15 +510,10 @@
     <div class="trial-gift">🎁 OFFERT</div>
     <div style="font-size:21px;font-weight:800;margin-bottom:6px">5 jours de Premium gratuits</div>
     <div class="dim" style="font-size:13.5px;margin-bottom:14px;line-height:1.6">Nettoyage complet sans limite, suppression des menaces, doublons et gros fichiers, mises à jour des logiciels. Sans carte bancaire : l'essai s'arrête tout seul.</div>
-    <div class="row" style="gap:10px"><label class="trial-lbl" style="flex:1">Nom<input class="inp" id="tr-nom" autocomplete="family-name"></label><label class="trial-lbl" style="flex:1">Prénom<input class="inp" id="tr-prenom" autocomplete="given-name"></label></div>
-    <label class="trial-lbl">Téléphone<input class="inp" id="tr-tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></label>
-    <div class="trial-lbl" style="margin-top:4px">Souhaitez-vous être rappelé(e) par un conseiller SecureeTech ?</div>
-    <div style="display:flex;gap:22px;margin:6px 0 10px;justify-content:center"><label class="trial-radio"><input type="radio" name="tr-rappel" value="oui"> Oui</label><label class="trial-radio"><input type="radio" name="tr-rappel" value="non"> Non</label></div>
-    <label class="cs-check" style="margin:0 0 8px;text-align:left"><input type="checkbox" id="tr-news" onchange="document.getElementById('tr-email-row').style.display=this.checked?'':'none'"><span>J'accepte de recevoir par e-mail les nouveautés et les offres de SecureeTech (désinscription en un clic).</span></label>
-    <label class="trial-lbl" id="tr-email-row" style="display:none">Adresse e-mail<input class="inp" id="tr-email" type="email" autocomplete="email"></label>
+    <div id="trial-wait" class="dim" style="font-size:14px;font-weight:700;margin-bottom:12px">Activation de votre essai en cours…</div>
     <div id="trial-err" style="display:none;color:var(--red);font-size:13px;font-weight:700;margin-bottom:10px"></div>
-    <button class="trial-cta shine" id="trial-go" onclick="startTrial()">Activer mes 5 jours gratuits</button>
-    <div class="muted" style="font-size:12px">Aucun paiement. Un seul essai par ordinateur.</div>
+    <button class="trial-cta shine" id="trial-go" onclick="startTrial()" style="display:none">Réessayer</button>
+    <div class="muted" style="font-size:12px">Aucun paiement, aucune information demandée. Un seul essai par ordinateur.</div>
   </div>
   <div id="trial-ok-zone" style="display:none">
     <div style="font-size:34px;margin-bottom:6px">✅</div>

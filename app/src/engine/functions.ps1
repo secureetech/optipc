@@ -1567,10 +1567,10 @@ function Get-LicenseStatus {
     }
 }
 # ══════════════════════════════════════════════════════════════════════════
-#  ESSAI PRO GRATUIT (5 jours) DEMANDE DEPUIS LE LOGICIEL
-#  Le CRM SecureeTech genere une cle d'essai (notee "Fournie par : logiciel")
-#  puis OptiPC l'active aussitot : le client n'a rien a copier.
-#  Un seul essai par ordinateur et par adresse e-mail (controle cote CRM).
+#  ESSAI PRO GRATUIT (5 jours) DEMANDE AUTOMATIQUEMENT PAR LE LOGICIEL
+#  Le serveur de licences (/v1/optipc/trial) genere une cle d'essai de 5 jours,
+#  puis OptiPC l'active aussitot : aucun formulaire, le client n'a rien a faire.
+#  Un seul essai par ordinateur (controle cote serveur sur l'identifiant de poste).
 # ══════════════════════════════════════════════════════════════════════════
 function Get-OptiPCCrmBase { 'https://crm-secureetech.up.railway.app' }
 
@@ -1581,22 +1581,18 @@ function Invoke-StartTrial($prenom, $email, $telephone, $rappel, $nom = '', $new
         try { $mid = Get-MachineFingerprint } catch {}
         $ver = ''
         try { $ver = [string](Get-OptiPCVersion) } catch {}
+        # Depuis la 2.1 (19/10/2026) : essai automatique, sans formulaire. Le serveur de
+        # licences cree une cle d'essai de 5 jours, une seule fois par ordinateur.
         $body = @{
-            prenom    = [string]$prenom
-            nom       = [string]$nom
-            nom_complet = ("$prenom $nom").Trim()
-            email     = [string]$email
-            newsletter = [string]$newsletter
-            telephone = [string]$telephone
-            rappel    = [string]$rappel
-            source    = 'logiciel'
-            machine   = $mid
-            page      = "OptiPC $ver"
+            product     = 'optipc'
+            machine_id  = $mid
+            hostname    = $env:COMPUTERNAME
+            app_version = $ver
         }
-        $r = Invoke-OptiPCWeb ((Get-OptiPCCrmBase) + '/api/essai-optipc') 'POST' $body 30
+        $r = Invoke-OptiPCWeb ((Get-OptiPCApiBase) + '/v1/optipc/trial') 'POST' $body 30
         if(-not $r.ok){
             $msg = ''
-            try { if($r.server){ $j = $r.server | ConvertFrom-Json; if($j.erreur){ $msg = [string]$j.erreur } } } catch {}
+            try { if($r.server){ $j = $r.server | ConvertFrom-Json; if($j.message){ $msg = [string]$j.message } elseif($j.erreur){ $msg = [string]$j.erreur } } } catch {}
             if(-not $msg){
                 if($r.status -gt 0){ $msg = "Le serveur a refuse la demande (code $($r.status)). Appelez le 05 54 54 23 43." }
                 else { $msg = "Impossible de joindre le serveur. Verifiez votre connexion internet, puis reessayez." }
@@ -1604,7 +1600,7 @@ function Invoke-StartTrial($prenom, $email, $telephone, $rappel, $nom = '', $new
             if($r.status -eq 409){ try { [System.IO.Directory]::CreateDirectory("$env:LOCALAPPDATA\OptiPC") | Out-Null; [IO.File]::WriteAllText("$env:LOCALAPPDATA\OptiPC\trial.used", (Get-Date -Format 'o')) } catch {} }
             return @{ok=$false;message=$msg;already=($r.status -eq 409)}
         }
-        $cle = [string]$r.data.cle
+        $cle = [string]$r.data.key
         if(-not $cle){ return @{ok=$false;message="La cle d'essai n'a pas pu etre generee. Appelez le 05 54 54 23 43."} }
         $act = Invoke-ActivateLicense $cle
         if(-not $act.isPro -or -not (Test-IsPro)){
@@ -1620,13 +1616,13 @@ function Invoke-StartTrial($prenom, $email, $telephone, $rappel, $nom = '', $new
                 foreach($p in $o.PSObject.Properties){ $m[$p.Name] = $p.Value }
             }
             $m.trial = $true
-            $m.trial_days = [int]$r.data.jours
+            $m.trial_days = [int]$r.data.days
             ($m | ConvertTo-Json -Compress) | Out-File $mf -Encoding UTF8 -Force
         } catch {}
         try { [System.IO.Directory]::CreateDirectory("$env:LOCALAPPDATA\OptiPC") | Out-Null; [IO.File]::WriteAllText("$env:LOCALAPPDATA\OptiPC\trial.used", (Get-Date -Format 'o')) } catch {}
         $st = Get-LicenseStatus
         $st.ok = $true
-        $st.days = [int]$r.data.jours
+        $st.days = [int]$r.data.days
         $st
     } catch {
         @{ok=$false;message="L'essai n'a pas pu demarrer sur cet ordinateur : $($_.Exception.Message)"}

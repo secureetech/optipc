@@ -1155,19 +1155,20 @@ window.onload=async()=>{
   try{ const v=await API.get('/api/version',8000); if(v&&v.version)document.querySelectorAll('.opti-ver').forEach(e=>e.textContent=v.version); }catch(e){}
 };
 
-/* ── Essai Premium 5 jours : formulaire du premier lancement ───────── */
+/* ── Essai Premium 5 jours : automatique, sans formulaire (depuis la 2.1) ── */
+function openTrial(){
+  if(!_trialAvailable()){ openBuyPage(); return; }
+  $('trial-form-zone').style.display=''; $('trial-ok-zone').style.display='none';
+  $('trial-err').style.display='none';
+  $('trial-ov').classList.add('show');
+  startTrial();
+}
 async function startTrial(){
-  const v=id=>{ const e=$(id); return e?e.value.trim():''; };
-  const nom=v('tr-nom'), prenom=v('tr-prenom'), telephone=v('tr-tel'), news=!!($('tr-news')&&$('tr-news').checked), email=news?v('tr-email'):'';
-  const r=document.querySelector('input[name=tr-rappel]:checked');
-  if(!nom){ _trialErr('Indiquez votre nom.'); return; }
-  if(!prenom){ _trialErr('Indiquez votre prénom.'); return; }
-  if(telephone.replace(/\D/g,'').length<10){ _trialErr('Indiquez un numéro de téléphone valide (10 chiffres).'); return; }
-  if(!r){ _trialErr('Choisissez Oui ou Non pour être rappelé(e).'); return; }
-  if(news&&!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)){ _trialErr('Indiquez une adresse e-mail valide pour recevoir nos nouveautés.'); return; }
-  const btn=$('trial-go'); btn.disabled=true; btn.textContent='Activation en cours…';
+  const btn=$('trial-go'), wait=$('trial-wait');
+  btn.style.display='none'; if(wait)wait.style.display='';
+  $('trial-err').style.display='none';
   try{
-    const d=await API.post('/api/license/trial',{prenom,nom,email,telephone,rappel:r.value,newsletter:news?'oui':'non'},90000);
+    const d=await API.post('/api/license/trial',{},90000);
     if(d&&d.ok){
       try{ localStorage.setItem('optipc_trial_used','1'); }catch(e){}
       _trialUsed=true; _isPro=true; _setProUI(d);
@@ -1179,9 +1180,10 @@ async function startTrial(){
     } else {
       if(d&&d.already){ try{ localStorage.setItem('optipc_trial_used','1'); }catch(e){} _trialUsed=true; _syncTrialButtons(); }
       _trialErr((d&&d.message)||"L'essai n'a pas pu démarrer. Appelez le 05 54 54 23 43.");
+      if(!(d&&d.already))btn.style.display='';
     }
-  }catch(e){ _trialErr("L'essai n'a pas pu démarrer. Vérifiez votre connexion internet."); }
-  btn.disabled=false; btn.textContent='Activer mes 5 jours gratuits';
+  }catch(e){ _trialErr("L'essai n'a pas pu démarrer. Vérifiez votre connexion internet."); btn.style.display=''; }
+  if(wait)wait.style.display='none';
 }
 function firstLaunchOffer(){
   try{ if(localStorage.getItem('optipc_offer_shown'))return; }catch(e){}
