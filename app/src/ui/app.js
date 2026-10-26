@@ -25,9 +25,12 @@ try{ window.chrome.webview.addEventListener('message',e=>{ const m=e.data||{}; i
 })();
 
 /* ── Prix et identité ──────────────────────────────────────────────── */
-EDITEUR.prixPro='49,90 € par an';
+EDITEUR.prixPro='99,80 € par an (ou 13,80 € par mois)';
 EDITEUR.dureePro='Abonnement annuel, 1 ordinateur';
-const PRICES={month:'6,90 €',monthOld:'13,80 €',year:'49,90 €',yearOld:'99,80 €',two:'89,90 €',twoOld:'179,80 €'};
+const PRICES={month:'13,80 €',year:'99,80 €'};
+// Limites de la version gratuite (27/10/2026) : le moteur répond {premium:true, quota:'startup'|'uninstall'}
+(function(){ try{ const post=API.post; const MSG={startup:'La version gratuite permet de retirer 2 programmes du démarrage. Passez en Premium pour alléger complètement le démarrage de Windows.',uninstall:'La version gratuite permet 3 désinstallations par mois. Passez en Premium pour désinstaller sans limite.'}; API.post=async function(u,b,t){ const r=await post.call(API,u,b,t); try{ if(r&&r.premium&&!_isPro){ showProGate(MSG[r.quota]||'Cette fonction est incluse dans Premium.'); } }catch(e){} return r; }; }catch(e){} })();
+function ouvrirLien(u){ try{ window.open(u,'_blank'); toast('Ouverture dans votre navigateur…','ok'); }catch(e){} }
 function openBuyPage(){ try{ window.open(BUY_URL,'_blank'); toast('Page d’achat ouverte dans votre navigateur','ok'); }catch(e){ toast('Rendez-vous sur secureetech.com/optipc','info'); } }
 function openPremium(){
   if(_isPro){ goSec('params'); return; }
@@ -326,7 +329,7 @@ function buildIssues(){
   const an=R.junk;
   if(an){
     const jb=junkBytes(an,true);
-    if(jb>0)L.push({id:'junk',ico:'trash',cls:'bad',t:'Fichiers inutiles',d:'Fichiers temporaires, caches des navigateurs, restes de mises à jour Windows',bytes:jb,gain:fmtB(jb),sev:'Important',act:true,on:true});
+    if(jb>0){ const jg=_isPro?jb:Math.round(jb/2); L.push({id:'junk',ico:'trash',cls:'bad',t:'Fichiers inutiles',d:'Fichiers temporaires, caches des navigateurs, restes de mises à jour Windows'+(_isPro?'':' · '+fmtB(jb)+' trouvés : la version gratuite en nettoie la moitié, Premium nettoie tout'),bytes:jg,gain:fmtB(jg),sev:'Important',act:true,on:true}); }
     const adv=(an.items||[]).filter(i=>i.size>0&&i.cat==='Avance'&&i.id!=='winold'&&i.id!=='prefetch').reduce((s,i)=>s+i.size,0);
     if(adv>0&&!_isPro)L.push({id:'adv',ico:'crown',cls:'acc',t:'Nettoyage avancé',d:'Mises à jour Windows déjà installées, caches DirectX, fichiers de plantage',bytes:0,gain:fmtB(adv),sev:'Premium',prem:true});
   }
@@ -416,10 +419,10 @@ async function startOptimize(){
   const before=((_scanR||{}).junk||{}).score||60;
   let doneN=0; const tick=()=>{ doneN++; const p=Math.round(doneN/S.length*100); $('opt-bar').style.width=p+'%'; $('orb-pct').textContent=p+'\u202F%'; };
   $('orb-pct').textContent='0 %'; $('orb-scan-lbl').textContent='OPTIMISATION'; $('opt-bar').style.width='0%';
-  const K={freed:0,files:0,start:0,sec:0,limited:0,recycled:0};
+  const K={freed:0,files:0,start:0,sec:0,limited:0,recycled:0,junkLim:0};
   const step=async(k,fn)=>{ stepSet('os-',k,'run'); try{ const f=await fn(); stepSet('os-',k,'done',f||''); }catch(e){ stepSet('os-',k,'err','non effectué'); } tick(); };
   await step('rp',async()=>{ const r=await API.post('/api/restorepoint',{desc:'OptiPC - avant optimisation'},300000); return r&&r.ok?(r.created?'créé':'déjà récent'):'impossible'; });
-  if(has('junk'))await step('junk',async()=>{ const ids=((_scanR.junk||{}).items||[]).filter(i=>i.size>0&&((i.cat==='Windows'&&i.id!=='recent')||i.cat==='Navigateurs'||(_isPro&&i.cat==='Avance'&&i.id!=='winold'&&i.id!=='prefetch'))).map(i=>i.id); if(!ids.length)return 'déjà propre'; const r=await API.post('/api/clean',{selected:ids},600000); K.freed+=Number(r.cleanedBytes||0); return String(r.cleaned||'').replace(' GB',' Go').replace(' MB',' Mo')+' libérés'; });
+  if(has('junk'))await step('junk',async()=>{ const ids=((_scanR.junk||{}).items||[]).filter(i=>i.size>0&&((i.cat==='Windows'&&i.id!=='recent')||i.cat==='Navigateurs'||(_isPro&&i.cat==='Avance'&&i.id!=='winold'&&i.id!=='prefetch'))).map(i=>i.id); if(!ids.length)return 'déjà propre'; const r=await API.post('/api/clean',{selected:ids},600000); K.freed+=Number(r.cleanedBytes||0); K.junkLim=Number(r.limitedBytes||0); return String(r.cleaned||'').replace(' GB',' Go').replace(' MB',' Mo')+' libérés'; });
   if(sel.some(x=>x.space))await step('space',async()=>{ const paths=[].concat(...sel.filter(x=>x.space).map(x=>x.space)); const r=await API.post('/api/space/remove',{paths},900000); K.recycled+=Number(r.freed||0); K.files+=Number(r.count||r.done||0); K.limited=Number(r.limited||0); return (r.count||r.done||0)+' à la Corbeille'; });
   if(has('start'))await step('start',async()=>{ let n=0; for(const it of has('start').startItems){ try{ const r=await API.post('/api/startup/toggle',{name:it.name,regPath:it.regPath,enable:false},30000); if(r&&r.ok)n++; }catch(e){} } K.start=n; return n+' retiré'+(n>1?'s':''); });
   if(has('ram'))await step('ram',async()=>{ await API.post('/api/ram/optimize',{},60000); return 'libérée'; });
@@ -440,6 +443,7 @@ async function startOptimize(){
     +(has('sec')||has('av')?'<div class="kpi"><b class="g">100 %</b><span>protection active</span></div>':'');
   let note='';
   if(K.recycled>0||K.files>0){ note+='Les doublons et éléments vides sont dans la Corbeille : vous pouvez encore les récupérer. Videz-la pour libérer réellement la place. '; const fr=$('fix-recycle'); if(fr)fr.style.display=''; }
+  if(K.junkLim>0&&!_isPro)note+='<br><b style="color:#FFB27A">Version gratuite : '+fmtB(K.junkLim)+' de fichiers inutiles restent à nettoyer.</b> <a href="#" onclick="openPremium();return false" style="color:#FFB27A">Tout nettoyer avec Premium</a>';
   if(K.limited&&!_isPro)note+='<br><b style="color:#FFB27A">'+K.limited+' élément(s) non traités : la version gratuite est limitée à 500 Mo par passage.</b> <a href="#" onclick="openPremium();return false" style="color:#FFB27A">Passer en Premium</a>';
   $('fix-note').innerHTML=note;
   addLog('Optimisation : '+fmtB(total)+' récupérés, score '+before+' → '+after);
@@ -908,7 +912,7 @@ function renderHealth(h){
   }
   $('hl-disks').innerHTML=disks.length?disks.map(d=>'<div class="card disk-card"><div class="disk-head"><div class="gauge">'+gaugeSvg(d.pct,d.level)+'<div class="gv">'+d.pct+'<small>%</small></div></div><div style="min-width:0"><div style="font-size:17px;font-weight:800;word-break:break-word">'+esc(d.name)+'</div><div class="dim" style="font-size:13px">'+esc(d.type)+' · '+esc(d.size)+((d.letters||[]).length?' · '+esc(d.letters.join(' ')):'')+'</div><div style="margin-top:6px"><span class="lvl '+(d.level==='ok'?'ok':d.level)+'">Santé : '+esc(d.label)+'</span></div></div></div>'
     +((d.reasons||[]).length?'<div class="note '+(d.level==='crit'?'red':'')+'">'+d.reasons.map(esc).join('<br>')+'</div>':'')
-    +'<div class="kv">'+(d.rows||[]).map(r=>'<div>'+esc(r.k)+'</div><div>'+esc(r.v)+'</div>').join('')+'</div></div>').join('')
+    +(_isPro?'<div class="kv">'+(d.rows||[]).map(r=>'<div>'+esc(r.k)+'</div><div>'+esc(r.v)+'</div>').join('')+'</div>':'<div class="note acc" style="margin-top:8px">🔒 Le détail du disque (heures d’utilisation, température, erreurs, données écrites…) est inclus dans Premium. <a href="#" onclick="openPremium();return false" style="font-weight:800;color:var(--acc-text)">Débloquer</a></div>')+'</div>').join('')
     :'<div class="card"><div class="empty-note">L’état des disques n’est pas disponible sur ce PC (disque virtuel ou pilote ancien).</div></div>';
   const b=(h&&h.battery)||{}, bb=$('hl-batt');
   if(bb){
@@ -940,7 +944,7 @@ function renderNetwork(d){
   const w=d.wifi||{};
   const wl=w.connected?(w.level||'ok'):'none';
   $('net-cards').innerHTML='<div class="stat-card"><div class="stat-lbl">Appareils connectés</div><div class="stat-val" style="color:var(--acc-text)">'+d.count+'</div><div class="stat-sub">sur votre réseau</div></div>'
-    +'<div class="stat-card"><div class="stat-lbl">Nouveaux appareils</div><div class="stat-val" style="color:'+(d.newCount?'var(--orange)':'var(--green)')+'">'+d.newCount+'</div><div class="stat-sub">'+(d.newCount?'à vérifier ci-dessous':'aucun inconnu depuis la dernière fois')+'</div></div>'
+    +'<div class="stat-card"><div class="stat-lbl">Nouveaux appareils</div><div class="stat-val" style="color:'+(d.newCount?'var(--orange)':'var(--green)')+'">'+(_isPro?d.newCount:(d.newCount?'🔒':'0'))+'</div><div class="stat-sub">'+(d.newCount?'à vérifier ci-dessous':'aucun inconnu depuis la dernière fois')+'</div></div>'
     +'<div class="stat-card"><div class="stat-lbl">Wi-Fi</div><div class="stat-val" style="color:'+(wl==='crit'?'var(--red)':wl==='warn'?'var(--orange)':wl==='none'?'var(--muted)':'var(--green)')+'">'+(w.connected?(wl==='ok'?'Protégé':wl==='warn'?'Faible':'Non protégé'):'Câble')+'</div><div class="stat-sub">'+esc(w.connected?(w.ssid||''):'Connexion par câble')+'</div></div>'
     +'<div class="stat-card"><div class="stat-lbl">Serveurs DNS</div><div class="stat-val" style="color:'+(d.dnsLevel==='ok'?'var(--green)':'var(--orange)')+'">'+(d.dnsLevel==='ok'?'Normaux':'À vérifier')+'</div><div class="stat-sub">'+esc((d.dns||[]).join(', '))+'</div></div>';
   $('net-wifi').innerHTML='<div class="card-title">Sécurité du Wi-Fi</div>'+(w.connected?'<div class="row" style="margin-bottom:10px"><span class="lvl '+(wl==='ok'?'ok':wl)+'">'+esc(w.verdict||'')+'</span></div><div class="kv"><div>Réseau</div><div>'+esc(w.ssid||'--')+'</div><div>Protection</div><div>'+esc(w.auth||'--')+'</div><div>Chiffrement</div><div>'+esc(w.cipher||'--')+'</div><div>Signal</div><div>'+(w.signal!=null?w.signal+' %':'--')+'</div></div>':'<div class="note">Ce PC est relié à la box par un câble : pas de Wi-Fi à vérifier.</div>')
@@ -948,8 +952,8 @@ function renderNetwork(d){
   $('net-meta').textContent='Analysé le '+(d.date||'')+' · votre PC : '+(d.myIp||'');
   const devs=(d.devices||[]).slice().sort((a,b)=>(b.isNew-a.isNew)||(b.isGateway-a.isGateway)||(b.isSelf-a.isSelf));
   window._netDevs=devs;
-  $('net-devs').innerHTML=devs.map((x,i)=>'<div class="dev'+(x.isNew?' new':'')+'" style="animation:rise .4s ease both;animation-delay:'+(i*0.04)+'s"><div class="dev-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(DEV_ICONS[x.type]||DEV_ICONS.unknown)+'</svg></div><div style="min-width:0;flex:1"><div class="dev-n">'+esc(x.isSelf?'Ce PC':(x.display||x.label))+(x.isNew?' <span class="lvl crit" style="padding:2px 8px;font-size:11px">Nouveau</span>':'')+'</div><div class="dev-d">'+esc([x.display&&!x.isSelf?x.label:'',x.vendor,x.model&&x.model!==x.label?x.model:'',x.isSelf?x.name:''].filter(Boolean).join(' · ')||(x.privateMac?'Adresse privée (téléphone ou tablette récent)':'Nom inconnu'))+'<br>'+esc(x.ip)+(x.mac?' · '+esc(x.mac):'')+'</div>'
-    +(x.isNew?'<div class="dev-acts"><button class="btn-su btn-ghost" onclick="devMine('+i+',this)">C’est à moi</button><button class="btn-su btn-red" onclick="devUnknown()">Je ne le connais pas</button></div>':'')+'</div></div>').join('')||'<div class="empty-note">Aucun appareil trouvé.</div>';
+  $('net-devs').innerHTML=devs.map((x,i)=>'<div class="dev'+(x.isNew?' new':'')+'" style="animation:rise .4s ease both;animation-delay:'+(i*0.04)+'s"><div class="dev-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(DEV_ICONS[x.type]||DEV_ICONS.unknown)+'</svg></div><div style="min-width:0;flex:1"><div class="dev-n">'+esc(x.isSelf?'Ce PC':(x.display||x.label))+(x.isNew?' <span class="lvl crit" style="padding:2px 8px;font-size:11px">Nouveau</span>':'')+'</div><div class="dev-d">'+(_isPro?(esc([x.display&&!x.isSelf?x.label:'',x.vendor,x.model&&x.model!==x.label?x.model:'',x.isSelf?x.name:''].filter(Boolean).join(' · ')||(x.privateMac?'Adresse privée (téléphone ou tablette récent)':'Nom inconnu'))+'<br>'+esc(x.ip)+(x.mac?' · '+esc(x.mac):'')):'🔒 Fabricant, modèle, adresse IP et adresse MAC avec Premium')+'</div>'
+    +(x.isNew&&!_isPro?'<div class="dev-acts"><button class="btn-su btn-soft" onclick="openPremium()">🔒 Alerte nouvel appareil : Premium</button></div>':'')+(x.isNew&&_isPro?'<div class="dev-acts"><button class="btn-su btn-ghost" onclick="devMine('+i+',this)">C’est à moi</button><button class="btn-su btn-red" onclick="devUnknown()">Je ne le connais pas</button></div>':'')+'</div></div>').join('')||'<div class="empty-note">Aucun appareil trouvé.</div>';
   // Radar : la box au centre, les autres appareils autour
   const bl=$('net-blips');
   if(bl){
@@ -1099,7 +1103,7 @@ function _setProUI(info){
   const t=$('sb-prem-title'); if(t)t.textContent=trial?'Essai Premium en cours':'Premium actif';
   const spp=$('sb-prem-price'); if(spp)spp.style.display=trial?'':'none';
   const de=$('sb-prem-desc'); if(de){ let s='Toutes les fonctions sont débloquées. Merci de votre confiance !'; if(trial&&info.expires_at){ try{ s='Votre essai se termine le '+new Date(info.expires_at+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.'; }catch(e){} } de.textContent=s; }
-  const ba=$('btn-activate-pro'); if(ba){ if(trial){ ba.style.display=''; ba.textContent='Garder Premium · 49,90 €/an'; ba.onclick=openBuyPage; } else ba.style.display='none'; }
+  const ba=$('btn-activate-pro'); if(ba){ if(trial){ ba.style.display=''; ba.textContent='Garder Premium · 99,80 €/an'; ba.onclick=openBuyPage; } else ba.style.display='none'; }
   const pb=$('prem-banner'); if(pb)pb.style.display='none';
   const hp=$('hist-prem'); if(hp)hp.style.display='none';
   const label=$('lic-plan-label'); if(label){ label.textContent=trial?'Essai Premium gratuit':'✅ Premium actif'; label.style.color='var(--acc-text)'; }
@@ -1123,13 +1127,13 @@ function _setProUI(info){
 }
 function renderPlanCompare(){
   const el=$('plan-compare'); if(!el)return;
-  const free=[['Analyse complète de l’ordinateur',1],['Nettoyage des fichiers inutiles et des caches',1],['Espace disque : 500 Mo par nettoyage',1],['Santé du disque et appareils du réseau',1],['Détection des virus et logiciels espions',1],['Suppression et quarantaine des menaces',0],['Nettoyage avancé, Windows.old et registre',0],['Nettoyage automatique planifié',0],['Mises à jour des logiciels en un clic',0],['Assistance téléphonique prioritaire',0]];
+  const free=[['Analyse complète de l’ordinateur',1],['Nettoyage de la moitié des fichiers inutiles',1],['Espace disque : 500 Mo par nettoyage',1],['État des disques et liste des appareils du réseau',1],['3 désinstallations par mois, 2 programmes retirés du démarrage',1],['Détection des virus et logiciels espions',1],['Suppression et quarantaine des menaces',0],['Nettoyage avancé, Windows.old et registre',0],['Nettoyage automatique planifié',0],['Mises à jour des logiciels en un clic',0],['Assistance téléphonique prioritaire',0]];
   const prem=[['Tout ce que contient la version gratuite',0],['Supprime réellement les menaces détectées',1],['Quarantaine réversible : zéro risque de fausse alerte',1],['Espace disque sans limite + nettoyage avancé',1],['Nettoyage automatique : PC propre sans y penser',1],['Mises à jour des logiciels en un clic',1],['Rapport technicien en PDF',1],['Assistance téléphonique prioritaire au '+EDITEUR.tel,1]];
   el.innerHTML='<div class="cmp-wrap">'
     +'<div class="cmp-col"><div class="cmp-head">Gratuit'+(_isPro?'':' <span class="cmp-badge-cur">Votre version</span>')+'</div><div class="cmp-sub">Pour voir ce qui ne va pas et faire le ménage de base.</div><div class="cmp-price" style="color:var(--dim)">0 €<small>Sans limite de durée, sans publicité</small></div><ul class="cmp-list">'+free.map(f=>'<li class="cmp-li'+(f[1]?'':' no')+'"><span>'+(f[1]?'✅':'🔒')+'</span><span>'+esc(f[0])+'</span></li>').join('')+'</ul>'
     +(_isPro?'<button class="cmp-cta ghost" onclick="revokeLicense()">Revenir à la version gratuite</button>':'<button class="cmp-cta ghost" disabled>Version actuelle</button>')+'</div>'
-    +'<div class="cmp-col pro"><div class="cmp-ribbon">−50 % offre limitée</div><div class="cmp-head">⭐ Premium'+(_isPro?' <span class="cmp-badge-cur">Votre version</span>':'')+'</div><div class="cmp-sub">Pour qu’OptiPC répare vraiment, tout seul, et que quelqu’un décroche quand vous appelez.</div>'
-    +'<div class="plans"><div class="plan"><s>'+PRICES.monthOld+'</s><b>'+PRICES.month+'</b><span>par mois</span></div><div class="plan best"><s>'+PRICES.yearOld+'</s><b>'+PRICES.year+'</b><span>par an</span></div><div class="plan"><s>'+PRICES.twoOld+'</s><b>'+PRICES.two+'</b><span>2 ans</span></div></div>'
+    +'<div class="cmp-col pro"><div class="cmp-ribbon">⭐ Recommandé</div><div class="cmp-head">⭐ Premium'+(_isPro?' <span class="cmp-badge-cur">Votre version</span>':'')+'</div><div class="cmp-sub">Pour qu’OptiPC répare vraiment, tout seul, et que quelqu’un décroche quand vous appelez.</div>'
+    +'<div class="plans"><div class="plan"><b>'+PRICES.month+'</b><span>par mois</span></div><div class="plan best"><b>'+PRICES.year+'</b><span>par an</span></div></div>'
     +'<ul class="cmp-list">'+prem.map(f=>'<li class="cmp-li'+(f[1]?' hot':'')+'"><span>'+(f[1]?'⭐':'✅')+'</span><span>'+esc(f[0])+'</span></li>').join('')+'</ul>'
     +(_isPro?'<button class="cmp-cta buy" disabled>✅ Premium actif</button>':'<button class="cmp-cta buy" onclick="openBuyPage()">Passer en Premium</button>'+(_trialAvailable()?'<button class="cmp-cta ghost" onclick="openTrial()">Essayer gratuitement 5 jours</button>':'')+'<button class="cmp-cta ghost" onclick="goActivate()">J’ai déjà une clé</button>')
     +'<div class="cmp-foot">'+(_isPro?'Merci de votre confiance.':'Une question ? Appelez le <b>'+EDITEUR.tel+'</b>, un technicien répond en français.')+'</div></div></div>';
