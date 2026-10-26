@@ -1501,6 +1501,19 @@ function Invoke-LicenseHeartbeat($force) {
         return @{checked=$true;offline=$true}
     }
     if($r.data.token){ Save-OptiPCToken $r.data.token $null }
+    # 26/10/2026 : date de fin tenue a jour (licence prolongee depuis le CRM de SecureeTech)
+    try {
+      if($r.data.current_period_end){
+        $mf = Get-LicenseMetaFile
+        if(Test-Path $mf){
+          $m = Get-Content $mf -Raw | ConvertFrom-Json
+          $fin = $r.data.current_period_end
+          if($fin -is [datetime]){ $fin = $fin.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') }
+          $m | Add-Member -NotePropertyName period_end -NotePropertyValue ([string]$fin) -Force
+          [IO.File]::WriteAllText($mf, ($m | ConvertTo-Json -Depth 5), [Text.Encoding]::UTF8)
+        }
+      }
+    } catch {}
     @{checked=$true;status=[string]$r.data.subscription_status;warning=[string]$r.data.warning}
     } catch {
         # Un controle de licence qui echoue ne doit jamais rien couper.
