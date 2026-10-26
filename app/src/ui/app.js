@@ -62,7 +62,7 @@ function loading(s,m){
 }
 
 /* ── Thème et taille du texte ──────────────────────────────────────── */
-function getThemePref(){ try{ return localStorage.getItem('optipc_theme')||'dark'; }catch(e){ return 'dark'; } }
+function getThemePref(){ try{ return localStorage.getItem('optipc_theme')||'light'; }catch(e){ return 'light'; } }
 function effectiveTheme(p){ if(p==='auto'){ try{ return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'; }catch(e){ return 'light'; } } return p==='dark'?'dark':'light'; }
 function applyTheme(){
   const pref=getThemePref(), t=effectiveTheme(pref);
