@@ -174,6 +174,26 @@ function Invoke-Cleaning($selected){
         wer=@("$env:ProgramData\Microsoft\Windows\WER\ReportArchive","$env:ProgramData\Microsoft\Windows\WER\ReportQueue","$env:ProgramData\Microsoft\Windows\WER\Temp")
         shader_cache=@("$env:LOCALAPPDATA\Microsoft\DirectX Shader Cache")
     }
+    # 27/10/2026 : version gratuite = la moitie de ce qui est trouve (par categories), le reste avec Premium
+    $limitedBytes = [long]0
+    $isProC = $false; try{ $isProC = [bool](Test-IsPro) }catch{}
+    if(-not $isProC){
+        $sizes = @{}
+        foreach($id in @($selected)){
+            $s = [long]0
+            if($id -eq 'winold'){ if(Test-Path "$env:SystemDrive\Windows.old" -EA SilentlyContinue){ $s = [long](Get-FolderSize "$env:SystemDrive\Windows.old") } }
+            elseif($map.ContainsKey($id)){ foreach($p in $map[$id]){ if($p -and (Test-Path $p -EA SilentlyContinue)){ try{ $s += [long](Get-FolderSize $p) }catch{} } } }
+            $sizes[[string]$id] = $s
+        }
+        $total = [long]0; foreach($v in $sizes.Values){ $total += [long]$v }
+        $cap = [long]($total / 2); $acc = [long]0; $keep = @()
+        foreach($k in @($sizes.Keys | Sort-Object { -[long]$sizes[$_] })){
+            if($acc + [long]$sizes[$k] -le $cap){ $keep += $k; $acc += [long]$sizes[$k] }
+        }
+        if(-not $keep.Count -and $sizes.Count){ $keep = @(@($sizes.Keys | Sort-Object { [long]$sizes[$_] })[0]); $acc = [long]$sizes[$keep[0]] }
+        $limitedBytes = [long]($total - $acc)
+        $selected = $keep
+    }
     foreach($id in $selected){
         if($id -eq "recycle"){try{Clear-RecycleBin -Force -EA SilentlyContinue}catch{};continue}
         if($id -eq "winold"){
@@ -205,7 +225,7 @@ function Invoke-Cleaning($selected){
             if($lines.Count -gt 200){ $lines | Select-Object -Last 200 | Set-Content $logFile -EA SilentlyContinue }
         }
     } catch {}
-    @{cleaned=(Format-Size $cleaned);cleanedBytes=$cleaned;success=$true}
+    @{cleaned=(Format-Size $cleaned);cleanedBytes=$cleaned;success=$true;limitedBytes=$limitedBytes;limited=(Format-Size $limitedBytes)}
 }
 
 function Get-DiskInfoData {
@@ -4308,4 +4328,31 @@ function Get-ScanStopFlag   { Join-Path (Get-ScanWorkDir) 'OptiPC_ScanStop.flag'
 function Request-ScanStop {
     try{ [IO.File]::WriteAllText((Get-ScanStopFlag),'1',[Text.Encoding]::UTF8); @{success=$true} }
     catch{ @{success=$false;error=$_.Exception.Message} }
+}
+
+# -- Limites de la version gratuite (27/10/2026) ------------------------------
+# startup : 2 programmes retires du demarrage au total ; uninstall : 3 desinstallations par mois.
+function Use-OptiFreeQuota([string]$kind, [int]$max){
+  try{ if(Test-IsPro){ return @{ok=$true} } }catch{}
+  $dir = "$env:LOCALAPPDATA\OptiPC"
+  $f = "$dir\free_quota.json"
+  $q = @{}
+  try{
+    if(Test-Path $f){
+      $o = Get-Content $f -Raw | ConvertFrom-Json
+      foreach($p in $o.PSObject.Properties){ $q[$p.Name] = [string]$p.Value }
+    }
+  }catch{}
+  $cle = $kind
+  if($kind -eq 'uninstall'){ $cle = 'uninstall_' + (Get-Date -Format 'yyyy-MM') }
+  $n = 0; try{ $n = [int]$q[$cle] }catch{}
+  if($n -ge $max){
+    return @{ok=$false;success=$false;premium=$true;quota=$kind;max=$max;msg="Limite de la version gratuite atteinte"}
+  }
+  $q[$cle] = [string]($n + 1)
+  try{
+    [System.IO.Directory]::CreateDirectory($dir) | Out-Null
+    [IO.File]::WriteAllText($f, ($q | ConvertTo-Json), [Text.Encoding]::UTF8)
+  }catch{}
+  @{ok=$true;used=($n + 1);max=$max}
 }
