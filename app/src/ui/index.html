@@ -54,7 +54,7 @@
   <div class="sb-prem shine" id="sb-prem">
     <div class="sb-prem-t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg><span id="sb-prem-title">OptiPC Premium</span></div>
     <div class="sb-prem-d" id="sb-prem-desc">Nettoyage automatique chaque semaine, mises à jour des logiciels, aucune limite.</div>
-    <div class="sb-prem-price" id="sb-prem-price"><b>49,90 €</b><span>/ an</span><s>99,80 €</s></div>
+    <div class="sb-prem-price" id="sb-prem-price"><b>99,80 €</b><span>/ an · ou 13,80 € / mois</span></div>
     <button class="btn-activate" id="btn-activate-pro" onclick="openPremium()">Passer en Premium</button>
   </div>
 </nav>
@@ -142,13 +142,23 @@
         <div class="hist-legend"><span id="hist-first">--</span><span id="hist-last">Aujourd'hui</span></div>
       </div>
       <div class="promo shine" id="prem-banner">
-        <span class="promo-tag">−50 % · offre limitée</span>
+        <span class="promo-tag">⭐ OptiPC Premium</span>
         <div class="promo-t">Laissez OptiPC s'occuper de tout, chaque semaine.</div>
         <div class="promo-d">Nettoyage automatique, mises à jour des logiciels, doublons et gros fichiers sans limite.</div>
-        <div class="promo-p"><b>49,90 €</b> / an <s>99,80 €</s></div>
+        <div class="promo-p"><b>99,80 €</b> / an <span style="opacity:.8">· ou 13,80 € / mois</span></div>
         <button type="button" class="btn-big" style="min-height:48px;font-size:16px" onclick="openPremium()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg>Passer en Premium</button>
         <button type="button" class="promo-link" id="pb-trial" onclick="openTrial()">Essai gratuit 5 jours</button>
       </div>
+    </div>
+  </div>
+  <!-- Les autres logiciels SecureeTech (27/10/2026) -->
+  <div class="card" id="autres-logiciels" style="margin-top:16px">
+    <div class="card-title">Les autres logiciels SecureeTech</div>
+    <div class="card-sub" style="margin:4px 0 0">Gratuits à télécharger. Version Premium incluse avec un abonnement SecureeTech.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px">
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px"><div style="font-weight:800">📄 SecureeTech PDF</div><div class="dim" style="font-size:12.5px;margin:4px 0 10px;line-height:1.5">Lire, modifier, remplir, signer et fusionner vos PDF en toute simplicité.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://api.secureetech.com/v1/pdf/download')">Télécharger gratuitement</button></div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px"><div style="font-weight:800">♻️ SecureeTech Recovery</div><div class="dim" style="font-size:12.5px;margin:4px 0 10px;line-height:1.5">Retrouvez les photos et fichiers supprimés par erreur, même après la Corbeille.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://api.secureetech.com/v1/recovery/download')">Télécharger gratuitement</button></div>
+      <div style="border:1px solid var(--border);border-radius:12px;padding:12px"><div style="font-weight:800">📱 OptiPhone</div><div class="dim" style="font-size:12.5px;margin:4px 0 10px;line-height:1.5">Nettoyez et protégez votre téléphone Android comme OptiPC le fait pour votre ordinateur.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://secureetech.com/optiphone/')">Découvrir OptiPhone</button></div>
     </div>
   </div>
   <div style="display:none"><span id="st-upd"></span><span id="st-upd-sub"></span><span id="stat-total"></span><i id="stat-total-bar"></i><span id="stat-procs"></span><span id="stat-ram"></span><i id="stat-ram-bar"></i><div id="hist-prem"></div><div id="home-recs"></div><div id="rec-list"></div><button id="btn-fixall"></button><span id="res-title"></span><span id="res-sub"></span><div id="care-idle"></div><div id="care-results"></div><button id="optim-btn"></button><span id="scan-txt"></span><span id="scan-sub"></span><span id="scan-score"></span><span id="scan-score-sub"></span><div id="scan-ring"></div><div id="home-ring"></div><div id="ring-content"></div><svg><circle id="ring-arc"/></svg></div>
@@ -498,8 +508,8 @@
   <svg width="40" height="40" viewBox="0 0 24 24" fill="#E8650C" style="display:block;margin:0 auto 10px" aria-hidden="true"><path d="M3 18h18l-1.5-10-5 4L12 5l-2.5 7-5-4z"/></svg>
   <div style="font-size:19px;font-weight:800;margin-bottom:8px">Fonction Premium</div>
   <div class="dim" style="font-size:14px;margin-bottom:14px;line-height:1.6" id="pro-gate-msg"></div>
-  <div class="plans"><div class="plan"><s>13,80 €</s><b>6,90 €</b><span>par mois</span></div><div class="plan best"><s>99,80 €</s><b>49,90 €</b><span>par an</span></div><div class="plan"><s>179,80 €</s><b>89,90 €</b><span>2 ans</span></div></div>
-  <div style="font-size:12px;font-weight:800;color:var(--acc-text);margin-bottom:12px">−50 % · offre limitée</div>
+  <div class="plans"><div class="plan"><b>13,80 €</b><span>par mois</span></div><div class="plan best"><b>99,80 €</b><span>par an</span></div></div>
+  <div style="font-size:12px;font-weight:700;color:var(--dim);margin-bottom:12px">Prix TTC · 1 ordinateur</div>
   <button id="pro-gate-trial" class="trial-cta" onclick="closeProGate();openTrial()">Essayer Premium gratuitement 5 jours</button>
   <div class="row" style="justify-content:center;flex-wrap:wrap"><button class="btn-su btn-ghost" onclick="closeProGate();goActivate()">J'ai une clé</button><button class="btn-su btn-primary" onclick="closeProGate();openBuyPage()">Passer en Premium</button></div>
 </div></div>
@@ -560,12 +570,12 @@
   <div class="dim" style="font-size:14px;margin-bottom:16px">Passez en <b style="color:var(--acc-text)">Premium</b> pour débloquer toutes les fonctions.</div>
   <div class="note" style="text-align:left;margin-bottom:16px">
     <div style="font-size:11.5px;font-weight:800;color:var(--green);letter-spacing:.05em;margin-bottom:6px">INCLUS GRATUITEMENT</div>
-    <div style="font-size:13.5px;line-height:1.9">✅ Analyse et nettoyage des fichiers inutiles<br>✅ Santé du disque et appareils du réseau<br>✅ Détection des virus et logiciels espions<br>✅ Désinstallation des logiciels</div>
+    <div style="font-size:13.5px;line-height:1.9">✅ Analyse complète de l’ordinateur<br>✅ Nettoyage de la moitié des fichiers inutiles<br>✅ État des disques et appareils du réseau<br>✅ Détection des virus et logiciels espions<br>✅ 3 désinstallations par mois</div>
     <div style="font-size:11.5px;font-weight:800;color:var(--acc-text);letter-spacing:.05em;margin:10px 0 6px;padding-top:10px;border-top:1px solid var(--border)">AVEC PREMIUM</div>
-    <div style="font-size:13.5px;line-height:1.9">⭐ <b>Suppression et quarantaine des menaces</b><br>⭐ Nettoyage sans limite et automatique<br>⭐ Mises à jour des logiciels en un clic<br>⭐ Assistance téléphonique prioritaire</div>
+    <div style="font-size:13.5px;line-height:1.9">⭐ <b>Suppression et quarantaine des menaces</b><br>⭐ Nettoyage complet, sans limite et automatique<br>⭐ Détail des disques et alertes réseau<br>⭐ Mises à jour des logiciels en un clic<br>⭐ Assistance téléphonique prioritaire</div>
   </div>
   <button id="welcome-trial" class="trial-cta" onclick="closeWelcome();openTrial()">Essayer Premium gratuitement 5 jours</button>
-  <button class="trial-cta" style="background:var(--bar)" onclick="closeWelcome();openBuyPage()">Découvrir Premium · 49,90 €/an</button>
+  <button class="trial-cta" style="background:var(--bar)" onclick="closeWelcome();openBuyPage()">Découvrir Premium · 99,80 €/an</button>
   <button class="wl-secondary" onclick="closeWelcome()">Continuer en version gratuite</button>
   <button onclick="closeWelcome();goActivate()" style="background:none;border:none;color:var(--acc-text);font-size:13px;padding:10px 4px 0;text-decoration:underline">J'ai déjà une clé Premium</button>
 </div></div>
