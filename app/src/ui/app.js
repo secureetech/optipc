@@ -1090,6 +1090,9 @@ function _setFreeUI(){
   if(_scanR){ buildIssues(); renderIssues(); }
   if(_space){ _spRendered=null; renderSpace(); }
 }
+// Date de fin de la licence (26/10/2026) : ISO (2027-10-26T...) ou JJ/MM/AAAA selon la machine
+function finLicence(s){ s=String(s||'').trim(); if(!s) return null; let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return new Date(+m[1],+m[2]-1,+m[3],12); m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return new Date(+m[3],+m[2]-1,+m[1],12); const d=new Date(s); return isNaN(d)?null:d; }
+function joursRestants(f){ const t=new Date(); t.setHours(12,0,0,0); return Math.round((f-t)/864e5); }
 function _setProUI(info){
   const trial=info&&info.trial;
   const tp=$('tb-prem'); if(tp){ tp.classList.add('is-on'); tp.querySelector('span').textContent=trial?'Essai Premium':'Premium actif'; tp.onclick=()=>goSec('params'); }
@@ -1103,6 +1106,7 @@ function _setProUI(info){
   const sub=$('lic-plan-sub');
   if(sub&&info){
     if(trial&&info.expires_at){ let fin=info.expires_at; try{ fin=new Date(info.expires_at+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){} sub.textContent='Se termine le '+fin; }
+    else if(finLicence(info.period_end)){ const f=finLicence(info.period_end), j=joursRestants(f); sub.textContent=(j>=0?'Expire le ':'Expirée le ')+f.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'})+(j>=0?' · '+j+' jour'+(j>1?'s':'')+' restant'+(j>1?'s':''):''); sub.style.color=j<=30?'#e67e00':''; }
     else if(info.days_active!=null&&info.days_active>=0){ const d=info.days_active; sub.textContent='Actif depuis '+(d===0?'aujourd’hui':d+' jour'+(d>1?'s':'')); }
     else sub.textContent='Licence active';
   }
@@ -1110,7 +1114,7 @@ function _setProUI(info){
   const az=$('lic-activate-zone'); if(az)az.style.display='none';
   const pz=$('lic-pro-zone');
   if(pz){ pz.style.display=''; const det=$('lic-pro-details');
-    if(det&&info){ let h=''; if(info.activated_at){ const d=new Date(info.activated_at); h+='<div>Activé le <b style="color:var(--text)">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})+'</b></div>'; } if(info.key_display)h+='<div>Clé : <span style="font-family:Consolas,monospace;color:var(--acc-text)">'+esc(info.key_display)+'</span></div>'; det.innerHTML=h; } }
+    if(det&&info){ let h=''; if(info.activated_at){ const d=new Date(info.activated_at); h+='<div>Activé le <b style="color:var(--text)">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})+'</b></div>'; } { const f=finLicence(info.period_end); if(f){ const j=joursRestants(f); h+='<div>Expire le <b style="color:var(--text)">'+f.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})+'</b>'+(j>=0?' · <b style="color:'+(j<=30?'#e67e00':'var(--acc-text)')+'">'+j+' jour'+(j>1?'s':'')+' restant'+(j>1?'s':'')+'</b>':' · <b style="color:#c62828">expirée</b>')+'</div>'; } } if(info.key_display)h+='<div>Clé : <span style="font-family:Consolas,monospace;color:var(--acc-text)">'+esc(info.key_display)+'</span></div>'; det.innerHTML=h; } }
   document.querySelectorAll('.badge-pro').forEach(b=>b.style.display='none');
   renderPlanCompare();
   if(window._lastScanData){ _qcSel=null; renderQuickClean(); }
