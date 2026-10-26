@@ -79,14 +79,14 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/ram/optimize$"    { $r = Optimize-Ram; break }
             "^/api/temp$"            { $r = Get-OptiTempData; break }
             "^/api/startup$"         { $r = @{items=@(Get-StartupItems)}; break }
-            "^/api/startup/toggle$"  { $r = Toggle-StartupItem $b.name $b.regPath $b.enable; break }
+            "^/api/startup/toggle$"  { $qq = @{ok=$true}; if(-not $b.enable){ $qq = Use-OptiFreeQuota 'startup' 2 }; if($qq.ok){ $r = Toggle-StartupItem $b.name $b.regPath $b.enable } else { $r = $qq }; break }
             "^/api/apps$"            { $r = @{apps=@(Get-AppsFull)}; break }
             "^/api/apps/refresh$"    { Clear-AppsCache; $r = @{apps=@(Get-AppsFull)}; break }
             "^/api/perf$"            { $r = Get-PerfData; break }
-            "^/api/apps/uninstall2$" { $r = Invoke-AppUninstallV2 $b.app $b.mode; break }
+            "^/api/apps/uninstall2$" { $qq = Use-OptiFreeQuota 'uninstall' 3; if($qq.ok){ $r = Invoke-AppUninstallV2 $b.app $b.mode } else { $r = $qq }; break }
             "^/api/apps/leftovers$"  { $r = Get-AppLeftovers $b.app; break }
             "^/api/apps/leftovers/clean$" { $r = Invoke-RemoveLeftovers $b.app; break }
-            "^/api/apps/force-uninstall$" { $r = Invoke-AppForceUninstall $b.app; break }
+            "^/api/apps/force-uninstall$" { $qq = Use-OptiFreeQuota 'uninstall' 3; if($qq.ok){ $r = Invoke-AppForceUninstall $b.app } else { $r = $qq }; break }
             "^/api/apps/force-uninstall-log$" { $r = Read-OptiTextLogTail "$env:TEMP\optipc_appforce_log.txt"; break }
             "^/api/security/quarantine$"  { if(Test-IsPro){ $r = Invoke-Quarantine $b.path $b.reason } else { $r = @{ok=$false;msg="Fonction reservee a la version Premium"} }; break }
             "^/api/security/ignore$"      { $r = Add-WhiteList $b.path $b.name; break }
@@ -96,8 +96,8 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/quarantine/delete$"    { $r = Remove-QuarItem $b.id; break }
             "^/api/defender/fullscan$"    { $r = Start-DefenderFullScan; break }
             "^/api/defender/status$"      { $r = Get-DefenderScanStatus; break }
-            "^/api/apps/uninstall$"  { $r = Invoke-Uninstall $b.uninstallString; break }
-            "^/api/apps/force$"      { $r = ForceRemove-App $b.name $b.uninstallString; break }
+            "^/api/apps/uninstall$"  { $qq = Use-OptiFreeQuota 'uninstall' 3; if($qq.ok){ $r = Invoke-Uninstall $b.uninstallString } else { $r = $qq }; break }
+            "^/api/apps/force$"      { $qq = Use-OptiFreeQuota 'uninstall' 3; if($qq.ok){ $r = ForceRemove-App $b.name $b.uninstallString } else { $r = $qq }; break }
             "^/api/bigfiles$"        { $r = @{files=@(Get-BigFiles)}; break }
             "^/api/duplicates$"      { $r = @{groups=@(Find-Duplicates)}; break }
             "^/api/virtmem$"         { $r = Get-VirtMemInfo; break }
