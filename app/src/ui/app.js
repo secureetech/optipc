@@ -1149,7 +1149,7 @@ window.onload=async()=>{
   applyTheme(); syncSettingsUI();
   loadPersistedLogs();
   try{ await loadProStatus(); }catch(e){}
-  setTimeout(async()=>{ try{ const h=await API.post('/api/license/heartbeat',{force:false},30000); if(h&&h.revoked){ _isPro=false; _setFreeUI(); toast(h.message||'Licence désactivée','err'); } else if(h&&h.warning){ toast(h.warning,'info'); } }catch(e){} },8000);
+  setTimeout(async()=>{ try{ const h=await API.post('/api/license/heartbeat',{force:true},30000); if(h&&h.revoked){ _isPro=false; _setFreeUI(); toast(h.message||'Licence désactivée','err'); } else { if(h&&h.warning){ toast(h.warning,'info'); } /* 29/10/2026 : date de fin a jour tout de suite (prolongation faite depuis le CRM) */ if(h&&h.checked&&!h.offline){ try{ await loadProStatus(); }catch(e){} } } }catch(e){} },8000);
   let ok=true;
   try{ const c=await API.get('/api/consent',30000); ok=!!(c&&c.accepted&&c.version===CONSENT_VERSION); }catch(e){ ok=true; }
   if(!ok)setTimeout(showConsentGate,300); else if(!_isPro)setTimeout(()=>{ if(_trialAvailable())firstLaunchOffer(); else showWelcomeOnce(); },2500);
