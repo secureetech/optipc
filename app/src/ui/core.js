@@ -2032,9 +2032,9 @@ window.onload=async()=>{
   // lui-meme la frequence ; hors ligne, rien n'est coupe.
   setTimeout(async()=>{
     try{
-      const h=await API.post('/api/license/heartbeat',{force:false},30000);
+      const h=await API.post('/api/license/heartbeat',{force:true},30000);
       if(h&&h.revoked){ _isPro=false; _setFreeUI(); toast(h.message||'Licence desactivee','err'); }
-      else if(h&&h.warning){ toast(h.warning,'info'); }
+      else { if(h&&h.warning){ toast(h.warning,'info'); } /* 29/10/2026 : date de fin a jour tout de suite (prolongation faite depuis le CRM) */ if(h&&h.checked&&!h.offline){ try{ await loadProStatus(); }catch(e){} } }
     }catch(e){}
   }, 8000);
   let _consentOk=true;
