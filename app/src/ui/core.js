@@ -84,18 +84,29 @@ function _edRepUE(){
     : 'représentant en cours de désignation — écrivez à ' + EDITEUR.mail;
 }
 
-/* Page de vente : c'est ici qu'arrivent les clients qui veulent payer. */
-const BUY_URL='https://www.secureetech.com/optipc/';
+/* Achat direct (10/11/2026) : le logiciel ouvre la page de paiement Stripe,
+   sans passer par la page du site (où le client cherchait les prix). */
+const BUY_LINKS={
+  mois:'https://buy.stripe.com/14A28sgml0TScvy1j67AL2C',
+  an:'https://buy.stripe.com/eVq8wQ1rr7ig2UY0f27AL2D'
+};
 /* Version des documents juridiques. En l'incrementant, tous les clients
    devront accepter a nouveau au prochain lancement. */
 const CONSENT_VERSION='1.0';
 
-async function openBuyPage(){
+/* Sans formule précise : on affiche le choix mensuel / annuel. */
+function openBuyPage(plan){
+  if(plan!=='mois'&&plan!=='an'){ showProGate('Choisissez votre formule. Paiement sécurisé, votre clé Premium s’affiche juste après et arrive par e-mail.',{title:'Passer en Premium'}); return; }
+  buyPlan(plan);
+}
+async function buyPlan(plan){
+  closeProGate();
+  const url=BUY_LINKS[plan==='mois'?'mois':'an']+'?client_reference_id=src_optipc_app';
   try{
-    const r=await API.post('/api/openurl',{url:BUY_URL},15000);
-    if(r&&r.success){ toast('Page d\u2019achat ouverte dans votre navigateur','ok'); return; }
+    const r=await API.post('/api/openurl',{url:url},15000);
+    if(r&&r.success){ toast('Page de paiement ouverte dans votre navigateur','ok'); return; }
   }catch(e){}
-  try{ window.open(BUY_URL,'_blank'); }catch(e){ toast('Rendez-vous sur secureetech.com/optipc','info'); }
+  try{ window.open(url,'_blank'); toast('Page de paiement ouverte dans votre navigateur','ok'); }catch(e){ toast('Rendez-vous sur secureetech.com','info'); }
 }
 function _edPrix(){ return EDITEUR.prixPro ? EDITEUR.prixPro : ''; }
 const SVC_INFO={
@@ -1508,7 +1519,7 @@ async function loadProStatus(){
     if(d.trialUsed){_trialUsed=true;}
     if(d.trialEnded){_trialEnded=true;}
     if(d.isPro){_isPro=true;_setProUI(d);_maybeTrialEndingReminder(d);}
-    else{_isPro=false;_setFreeUI();}
+    else{_isPro=false;_setFreeUI(); if(_trialEnded)_maybeTrialEndedScreen();}
     _syncTrialButtons();
   }catch(e){}
 }
@@ -1857,7 +1868,25 @@ function goActivate(){
   if(k){ setTimeout(function(){ k.scrollIntoView({behavior:'smooth',block:'center'}); k.focus(); },120); }
 }
 function ifPro(fn,msg){if(_isPro)fn();else showProGate(msg);}
-function showProGate(msg){document.getElementById('pro-gate-msg').textContent=msg||'Fonction Premium';_syncTrialButtons();document.getElementById('pro-gate-ov').classList.add('show');}
+/* opts : {title, gains} — gains = bilan réel de l'essai (/api/gains). */
+function showProGate(msg,opts){
+  opts=opts||{};
+  document.getElementById('pro-gate-title').textContent=opts.title||'Fonction Premium';
+  document.getElementById('pro-gate-msg').textContent=msg||'Fonction Premium';
+  const g=document.getElementById('pro-gate-gains'), lines=_gainLines(opts.gains);
+  g.innerHTML=lines.length?'<div class="pg-gains-t">Pendant votre essai, OptiPC Premium a :</div>'+lines.map(l=>'<div>✅ '+l+'</div>').join(''):'';
+  g.style.display=lines.length?'':'none';
+  _syncTrialButtons();
+  document.getElementById('pro-gate-ov').classList.add('show');
+}
+function _gainLines(g){
+  const l=[]; if(!g)return l;
+  if(g.bytes>0&&g.bytesText)l.push('libéré <b>'+g.bytesText+'</b> sur votre disque');
+  if(g.threats>0)l.push('supprimé <b>'+g.threats+' menace'+(g.threats>1?'s':'')+'</b>');
+  if(g.browsers>0)l.push('réparé <b>'+g.browsers+' détournement'+(g.browsers>1?'s':'')+'</b> de navigateur');
+  return l;
+}
+async function _getGains(){ try{ return await API.get('/api/gains',8000); }catch(e){ return null; } }
 
 /* ── ESSAI PRO GRATUIT 5 JOURS ─────────────────────────────────────────── */
 let _trialUsed=false,_trialEnded=false;
@@ -1870,57 +1899,32 @@ function _syncTrialButtons(){
   const ok=_trialAvailable();
   ['pro-gate-trial','welcome-trial'].forEach(id=>{const b=document.getElementById(id); if(b)b.style.display=ok?'':'none';});
 }
-function openTrial(){
-  if(!_trialAvailable()){ openBuyPage(); return; }
-  document.getElementById('trial-form-zone').style.display='';
-  document.getElementById('trial-ok-zone').style.display='none';
-  const e=document.getElementById('trial-err'); e.style.display='none';
-  document.getElementById('trial-ov').classList.add('show');
-  setTimeout(()=>{const p=document.getElementById('tr-prenom'); if(p)p.focus();},80);
-}
 function closeTrial(){ document.getElementById('trial-ov').classList.remove('show'); }
 function _trialErr(m){ const e=document.getElementById('trial-err'); e.textContent=m; e.style.display=''; }
-async function startTrial(){
-  const prenom=document.getElementById('tr-prenom').value.trim();
-  const email=document.getElementById('tr-email').value.trim();
-  const telephone=document.getElementById('tr-tel').value.trim();
-  const r=document.querySelector('input[name=tr-rappel]:checked');
-  if(!prenom){ _trialErr('Indiquez votre prénom.'); return; }
-  if(!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(email)){ _trialErr('Indiquez une adresse e-mail valide.'); return; }
-  if(telephone.replace(/\D/g,'').length<9){ _trialErr('Indiquez un numéro de téléphone valide.'); return; }
-  if(!r){ _trialErr("Choisissez Oui ou Non pour être rappelé(e)."); return; }
-  const btn=document.getElementById('trial-go');
-  btn.disabled=true; btn.textContent='Activation en cours…';
-  try{
-    const d=await API.post('/api/license/trial',{prenom,email,telephone,rappel:r.value},90000);
-    if(d && d.ok){
-      try{ localStorage.setItem('optipc_trial_used','1'); }catch(e){}
-      _trialUsed=true; _isPro=true; _setProUI(d);
-      let fin='';
-      if(d.expires_at){ try{ fin=new Date(d.expires_at+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}); }catch(e){} }
-      document.getElementById('trial-ok-msg').innerHTML='Toutes les fonctions Premium sont débloquées'+(fin?' jusqu’au <strong style="color:var(--text)">'+fin+'</strong>':' pendant 5 jours')+'.<br>Relancez une analyse : vous pouvez maintenant supprimer les menaces détectées.';
-      document.getElementById('trial-form-zone').style.display='none';
-      document.getElementById('trial-ok-zone').style.display='';
-      addLog('🎁 Essai Premium gratuit activé');
-    } else {
-      if(d && d.already){ try{ localStorage.setItem('optipc_trial_used','1'); }catch(e){} _trialUsed=true; _syncTrialButtons(); }
-      _trialErr((d&&d.message)||"L'essai n'a pas pu démarrer. Appelez le 05 54 54 23 43.");
-    }
-  }catch(e){
-    _trialErr("L'essai n'a pas pu démarrer ("+((e&&e.message)||'erreur locale')+"). Vérifiez votre connexion internet.");
-  }
-  btn.disabled=false; btn.textContent='Activer mon essai Premium gratuit';
-}
 function _trialDaysLeft(exp){
   try{ const end=new Date(exp+'T23:59:59'); return Math.ceil((end-new Date())/86400000); }catch(e){ return null; }
 }
-function _maybeTrialEndingReminder(info){
+/* Rappels de fin d'essai (10/11/2026) : J3, J4 et J5, une fois par jour,
+   avec le bilan réel de ce que Premium a fait. */
+async function _maybeTrialEndingReminder(info){
   if(!info||!info.trial||!info.expires_at)return;
   const left=_trialDaysLeft(info.expires_at);
-  if(left==null||left>1)return;
+  if(left==null||left>3)return;
   const _d=new Date(), _k=_d.getFullYear()+'-'+(_d.getMonth()+1)+'-'+_d.getDate();
   try{ if(localStorage.getItem('optipc_trial_ending')===_k)return; localStorage.setItem('optipc_trial_ending',_k); }catch(e){}
-  setTimeout(()=>showProGate((left<=0?"Votre essai Premium se termine aujourd'hui.":"Votre essai Premium se termine demain.")+" Gardez la suppression des menaces et le nettoyage automatique : abonnez-vous à OptiPC Premium (offre -50 %)."),2500);
+  const gains=await _getGains();
+  const titre=left<=1?"Dernier jour d'essai Premium":'Plus que '+left+" jours d'essai Premium";
+  setTimeout(()=>{ _welcomeAlreadyShown=true; showProGate("Après l'essai, OptiPC repasse en version gratuite : nettoyage limité, menaces seulement détectées, plus de nettoyage automatique. Gardez Premium en un clic :",{title:titre,gains:gains}); },2500);
+}
+/* Essai terminé : écran à la première ouverture qui suit, puis au plus une fois par semaine. */
+async function _maybeTrialEndedScreen(){
+  try{
+    const last=+(localStorage.getItem('optipc_trial_end_last')||0);
+    if(Date.now()-last<7*864e5)return;
+    localStorage.setItem('optipc_trial_end_last',String(Date.now()));
+  }catch(e){}
+  const gains=await _getGains();
+  setTimeout(()=>{ _welcomeAlreadyShown=true; showProGate("OptiPC est repassé en version gratuite. Pour retrouver le nettoyage complet et automatique et la suppression des menaces, choisissez votre formule :",{title:'Votre essai Premium est terminé',gains:gains}); },2500);
 }
 function closeProGate(){document.getElementById('pro-gate-ov').classList.remove('show');}
 
@@ -2367,22 +2371,4 @@ function showCGU(){
   el.addEventListener('click',e=>{if(e.target===el)el.remove();});
 }
 function _todayKey(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
-function maybeShowProReminder(){
-  // Verrou supplementaire : si l'invitation a deja ete vue dans cette
-  // session, on ne la represente jamais.
-  if(_welcomeAlreadyShown)return;
-  try{
-    if(!isPro() && notifOn('notifPro')){
-      let last=null;
-      try{ last=localStorage.getItem('optipc_pro_reminder'); }catch(e){}
-      if(last!==_todayKey()){
-        try{ localStorage.setItem('optipc_pro_reminder',_todayKey()); }catch(e){}
-        showProGate(_trialEnded
-          ? "Votre essai Premium gratuit est terminé : OptiPC est repassé en version gratuite. Abonnez-vous pour continuer à supprimer les menaces et garder le nettoyage automatique (offre -50 %)."
-          : "Vous utilisez OptiPC en version gratuite. La version Premium permet de supprimer les menaces détectées, débloque le nettoyage avancé et programme un nettoyage automatique de votre PC.");
-      }
-    }
-  }catch(e){}
-  
-}
 setTimeout(async()=>{ await loadNotifSetting(); },6000);

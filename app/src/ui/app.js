@@ -25,13 +25,12 @@ try{ window.chrome.webview.addEventListener('message',e=>{ const m=e.data||{}; i
 })();
 
 /* ── Prix et identité ──────────────────────────────────────────────── */
-EDITEUR.prixPro='99,80 € par an (ou 13,80 € par mois)';
+EDITEUR.prixPro='99,80 € par an (ou 13,90 € par mois)';
 EDITEUR.dureePro='Abonnement annuel, 1 ordinateur';
-const PRICES={month:'13,80 €',year:'99,80 €'};
+const PRICES={month:'13,90 €',year:'99,80 €'};
 // Limites de la version gratuite (27/10/2026) : le moteur répond {premium:true, quota:'startup'|'uninstall'}
 (function(){ try{ const post=API.post; const MSG={startup:'La version gratuite permet de retirer 2 programmes du démarrage. Passez en Premium pour alléger complètement le démarrage de Windows.',uninstall:'La version gratuite permet 3 désinstallations par mois. Passez en Premium pour désinstaller sans limite.'}; API.post=async function(u,b,t){ const r=await post.call(API,u,b,t); try{ if(r&&r.premium&&!_isPro){ showProGate(MSG[r.quota]||'Cette fonction est incluse dans Premium.'); } }catch(e){} return r; }; }catch(e){} })();
 function ouvrirLien(u){ try{ window.open(u,'_blank'); toast('Ouverture dans votre navigateur…','ok'); }catch(e){} }
-function openBuyPage(){ try{ window.open(BUY_URL,'_blank'); toast('Page d’achat ouverte dans votre navigateur','ok'); }catch(e){ toast('Rendez-vous sur secureetech.com/optipc','info'); } }
 function openPremium(){
   if(_isPro){ goSec('params'); return; }
   showProGate('Supprimez les menaces détectées, nettoyez sans limite et automatiquement, et mettez à jour vos logiciels en un clic.');
@@ -1103,7 +1102,7 @@ function _setProUI(info){
   const t=$('sb-prem-title'); if(t)t.textContent=trial?'Essai Premium en cours':'Premium actif';
   const spp=$('sb-prem-price'); if(spp)spp.style.display=trial?'':'none';
   const de=$('sb-prem-desc'); if(de){ let s='Toutes les fonctions sont débloquées. Merci de votre confiance !'; if(trial&&info.expires_at){ try{ s='Votre essai se termine le '+new Date(info.expires_at+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})+'.'; }catch(e){} } de.textContent=s; }
-  const ba=$('btn-activate-pro'); if(ba){ if(trial){ ba.style.display=''; ba.textContent='Garder Premium · 99,80 €/an'; ba.onclick=openBuyPage; } else ba.style.display='none'; }
+  const ba=$('btn-activate-pro'); if(ba){ if(trial){ ba.style.display=''; ba.textContent='Garder Premium'; ba.onclick=()=>openBuyPage(); } else ba.style.display='none'; }
   const pb=$('prem-banner'); if(pb)pb.style.display='none';
   const hp=$('hist-prem'); if(hp)hp.style.display='none';
   const label=$('lic-plan-label'); if(label){ label.textContent=trial?'Essai Premium gratuit':'✅ Premium actif'; label.style.color='var(--acc-text)'; }

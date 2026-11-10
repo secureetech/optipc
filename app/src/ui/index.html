@@ -54,7 +54,7 @@
   <div class="sb-prem shine" id="sb-prem">
     <div class="sb-prem-t"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg><span id="sb-prem-title">OptiPC Premium</span></div>
     <div class="sb-prem-d" id="sb-prem-desc">Nettoyage automatique chaque semaine, mises à jour des logiciels, aucune limite.</div>
-    <div class="sb-prem-price" id="sb-prem-price"><b>99,80 €</b><span>/ an · ou 13,80 € / mois</span></div>
+    <div class="sb-prem-price" id="sb-prem-price"><b>99,80 €</b><span>/ an · ou 13,90 € / mois</span></div>
     <button class="btn-activate" id="btn-activate-pro" onclick="openPremium()">Passer en Premium</button>
   </div>
 </nav>
@@ -145,7 +145,7 @@
         <span class="promo-tag">⭐ OptiPC Premium</span>
         <div class="promo-t">Laissez OptiPC s'occuper de tout, chaque semaine.</div>
         <div class="promo-d">Nettoyage automatique, mises à jour des logiciels, doublons et gros fichiers sans limite.</div>
-        <div class="promo-p"><b>99,80 €</b> / an <span style="opacity:.8">· ou 13,80 € / mois</span></div>
+        <div class="promo-p"><b>99,80 €</b> / an <span style="opacity:.8">· ou 13,90 € / mois</span></div>
         <button type="button" class="btn-big" style="min-height:48px;font-size:16px" onclick="openPremium()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></svg>Passer en Premium</button>
         <button type="button" class="promo-link" id="pb-trial" onclick="openTrial()">Essai gratuit 5 jours</button>
       </div>
@@ -506,12 +506,16 @@
 <div id="pro-gate-ov"><div class="pro-gate-box">
   <button class="ov-close" onclick="closeProGate()" aria-label="Fermer">&times;</button>
   <svg width="40" height="40" viewBox="0 0 24 24" fill="#E8650C" style="display:block;margin:0 auto 10px" aria-hidden="true"><path d="M3 18h18l-1.5-10-5 4L12 5l-2.5 7-5-4z"/></svg>
-  <div style="font-size:19px;font-weight:800;margin-bottom:8px">Fonction Premium</div>
+  <div style="font-size:19px;font-weight:800;margin-bottom:8px" id="pro-gate-title">Fonction Premium</div>
+  <div class="pg-gains" id="pro-gate-gains" style="display:none"></div>
   <div class="dim" style="font-size:14px;margin-bottom:14px;line-height:1.6" id="pro-gate-msg"></div>
-  <div class="plans"><div class="plan"><b>13,80 €</b><span>par mois</span></div><div class="plan best"><b>99,80 €</b><span>par an</span></div></div>
-  <div style="font-size:12px;font-weight:700;color:var(--dim);margin-bottom:12px">Prix TTC · 1 ordinateur</div>
+  <div class="plans pg-plans">
+    <button class="plan pg-buy" onclick="buyPlan('mois')"><b>13,90 €</b><span>par mois</span><em>Sans engagement</em><i>Choisir</i></button>
+    <button class="plan best pg-buy" onclick="buyPlan('an')"><small>Le plus choisi</small><b>99,80 €</b><span>par an</span><em>Soit 8,32 € / mois</em><i>Choisir</i></button>
+  </div>
+  <div style="font-size:12px;font-weight:700;color:var(--dim);margin-bottom:12px">Prix TTC · 1 ordinateur · paiement sécurisé · clé envoyée par e-mail</div>
   <button id="pro-gate-trial" class="trial-cta" onclick="closeProGate();openTrial()">Essayer Premium gratuitement 5 jours</button>
-  <div class="row" style="justify-content:center;flex-wrap:wrap"><button class="btn-su btn-ghost" onclick="closeProGate();goActivate()">J'ai une clé</button><button class="btn-su btn-primary" onclick="closeProGate();openBuyPage()">Passer en Premium</button></div>
+  <div class="row" style="justify-content:center;flex-wrap:wrap"><button class="btn-su btn-ghost" onclick="closeProGate();goActivate()">J'ai déjà une clé</button></div>
 </div></div>
 
 <div id="trial-ov" onclick="if(event.target===this)closeTrial()"><div class="trial-box">
@@ -575,7 +579,7 @@
     <div style="font-size:13.5px;line-height:1.9">⭐ <b>Suppression et quarantaine des menaces</b><br>⭐ Nettoyage complet, sans limite et automatique<br>⭐ Détail des disques et alertes réseau<br>⭐ Mises à jour des logiciels en un clic<br>⭐ Assistance téléphonique prioritaire</div>
   </div>
   <button id="welcome-trial" class="trial-cta" onclick="closeWelcome();openTrial()">Essayer Premium gratuitement 5 jours</button>
-  <button class="trial-cta" style="background:var(--bar)" onclick="closeWelcome();openBuyPage()">Découvrir Premium · 99,80 €/an</button>
+  <button class="trial-cta" style="background:var(--bar)" onclick="closeWelcome();openBuyPage()">Passer en Premium · dès 13,90 €/mois</button>
   <button class="wl-secondary" onclick="closeWelcome()">Continuer en version gratuite</button>
   <button onclick="closeWelcome();goActivate()" style="background:none;border:none;color:var(--acc-text);font-size:13px;padding:10px 4px 0;text-decoration:underline">J'ai déjà une clé Premium</button>
 </div></div>
