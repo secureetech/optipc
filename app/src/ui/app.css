@@ -773,3 +773,42 @@ body.opti-idle .shine::after,body.opti-idle .orbit,body.opti-idle .o-ring,body.o
 .pg-buy small{position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:3px 9px;white-space:nowrap}
 .pg-gains{text-align:left;background:rgba(46,160,67,.08);border:1px solid rgba(46,160,67,.3);border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13.5px;line-height:1.8}
 .pg-gains-t{font-weight:800;font-size:12px;letter-spacing:.03em;color:var(--green);margin-bottom:2px}
+
+/* 10/11/2026 : logiciels SecureeTech détectés + bilan de la semaine */
+.suite-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px}
+.suite-card{border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column}
+.suite-t{font-weight:800;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.suite-d{font-size:12.5px;color:var(--dim);margin:4px 0 10px;line-height:1.5;flex:1}
+.suite-ok,.suite-open{display:none}
+.suite-card.is-installed{border-color:rgba(46,160,67,.45);background:rgba(46,160,67,.05)}
+.suite-card.is-installed .suite-ok{display:inline-block;font-size:11px;font-weight:800;color:var(--green);background:rgba(46,160,67,.12);border-radius:999px;padding:2px 8px}
+.suite-card.is-installed .suite-get{display:none}
+.suite-card.is-installed .suite-open{display:inline-flex;justify-content:center}
+
+.wk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+.wk-tile{border:1px solid var(--border);border-radius:12px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.wk-tile span{font-size:20px}.wk-tile b{font-size:18px;font-weight:800}.wk-tile small{font-size:12px;color:var(--dim)}
+.wk-ext{text-align:left;border:1px solid rgba(232,101,12,.35);background:rgba(232,101,12,.06);border-radius:12px;padding:12px 14px;margin:10px 0 4px}
+
+/* 10/11/2026 : accueil adapté aux écrans plus petits (portables 13-15", zoom Windows 125-150 %) */
+@media (max-height:1100px),(max-width:1700px){
+  .hero{padding:26px 30px;gap:28px}
+  .orbwrap{zoom:.8}
+  .h-title{font-size:32px}
+  .h-sub{font-size:15px}
+  .hero-txt{gap:11px}.hp{gap:11px}
+  .chip{padding:6px 10px;font-size:13px}
+  .hero .btn-big{min-height:48px;font-size:16px}
+}
+@media (max-height:820px),(max-width:1250px){
+  .hero{padding:20px 24px;gap:22px}
+  .orbwrap{zoom:.64}
+  .h-title{font-size:27px}
+  .h-sub{font-size:14px}
+  .chips .chip:nth-child(n+5){display:none}
+  .hero .btn-big{min-height:44px;font-size:15px;padding:0 22px}
+}
+@media (max-height:660px){
+  .orbwrap{zoom:.52}
+  .h-sub{display:none}
+}

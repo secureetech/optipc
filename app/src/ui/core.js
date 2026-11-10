@@ -99,13 +99,11 @@ function openBuyPage(plan){
   if(plan!=='mois'&&plan!=='an'){ showProGate('Choisissez votre formule. Paiement sécurisé, votre clé Premium s’affiche juste après et arrive par e-mail.',{title:'Passer en Premium'}); return; }
   buyPlan(plan);
 }
-async function buyPlan(plan){
+/* window.open passe par OptiPC.exe, qui ouvre le navigateur avec les droits
+   normaux du client (et non administrateur). */
+function buyPlan(plan){
   closeProGate();
   const url=BUY_LINKS[plan==='mois'?'mois':'an']+'?client_reference_id=src_optipc_app';
-  try{
-    const r=await API.post('/api/openurl',{url:url},15000);
-    if(r&&r.success){ toast('Page de paiement ouverte dans votre navigateur','ok'); return; }
-  }catch(e){}
   try{ window.open(url,'_blank'); toast('Page de paiement ouverte dans votre navigateur','ok'); }catch(e){ toast('Rendez-vous sur secureetech.com','info'); }
 }
 function _edPrix(){ return EDITEUR.prixPro ? EDITEUR.prixPro : ''; }

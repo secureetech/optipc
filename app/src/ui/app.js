@@ -1153,6 +1153,7 @@ window.onload=async()=>{
   try{ const c=await API.get('/api/consent',30000); ok=!!(c&&c.accepted&&c.version===CONSENT_VERSION); }catch(e){ ok=true; }
   if(!ok)setTimeout(showConsentGate,300); else if(!_isPro)setTimeout(()=>{ if(_trialAvailable())firstLaunchOffer(); else showWelcomeOnce(); },2500);
   pollPerf(); loadScheduleStatus(); loadNotifSetting();
+  loadSuite(); setTimeout(checkWeekly,6000);
   loadHomeStatus();
   // Recherche silencieuse d'une mise à jour à chaque ouverture : proposée si disponible.
   setTimeout(async()=>{ const u=await checkUpdate(false); if(u)showUpdatePrompt(u); },4000);
@@ -1199,6 +1200,45 @@ function firstLaunchOffer(){
   try{ localStorage.setItem('optipc_offer_shown','1'); localStorage.setItem('optipc_welcome2','1'); }catch(e){}
   _welcomeAlreadyShown=true; openTrial();
 }
+
+/* ── Bilan de la semaine + extension + logiciels SecureeTech (10/11/2026) ── */
+const EXT_URL='https://chromewebstore.google.com/detail/secureetech-protection/lcncnhcecgfjoepagjcnpemjpfmimdcn';
+function installExtension(){ closeWeekly(); ouvrirLien(EXT_URL); }
+async function loadSuite(){
+  try{
+    const d=await API.get('/api/suite',20000); if(!d)return;
+    ['pdf','recovery','extension'].forEach(id=>{ const c=$('suite-'+id); if(c)c.classList.toggle('is-installed',!!d[id]); });
+  }catch(e){}
+}
+async function openSuiteApp(id){
+  try{ const r=await API.post('/api/suite/open',{id:id},20000); if(r&&r.ok){ toast('Ouverture…','ok'); return; } }catch(e){}
+  toast('Le logiciel n’a pas pu être ouvert. Appelez le '+EDITEUR.tel+'.','err');
+}
+let _weekBusy=false;
+async function checkWeekly(){
+  if(_weekBusy)return; _weekBusy=true;
+  try{
+    const w=await API.get('/api/weekly',15000);
+    if(!w||!w.unseen)return;
+    if(document.querySelector('#pro-gate-ov.show,#trial-ov.show,#consent-ov.show,#welcome-ov.show')){ setTimeout(checkWeekly,60000); return; }
+    const fmt=s=>{ try{ return new Date(s+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){ return s; } };
+    $('week-period').textContent='Du '+fmt(w.from)+' au '+fmt(w.to);
+    const t=[];
+    t.push(['🧹',w.bytes>0?esc(w.bytesText):'0 Go','nettoyés']);
+    t.push(['🛡️',String(w.threats||0),(w.threats>1?'menaces traitées':'menace traitée')]);
+    t.push([w.protection?'✅':'⚠️',w.protection?'Active':'À vérifier','protection']);
+    if(w.browsers>0)t.push(['🌐',String(w.browsers),'navigateur(s) réparé(s)']);
+    $('week-tiles').innerHTML=t.map(x=>'<div class="wk-tile"><span>'+x[0]+'</span><b>'+x[1]+'</b><small>'+x[2]+'</small></div>').join('');
+    $('week-msg').innerHTML=_isPro
+      ? 'OptiPC Premium veille sur votre ordinateur. Rien à faire de votre côté.'
+      : 'En version gratuite, une partie du nettoyage reste à faire. <a href="#" onclick="closeWeekly();openBuyPage();return false">Passer en Premium</a> pour un nettoyage complet et automatique.';
+    $('week-ext').style.display=w.extension?'none':'';
+    $('week-ov').classList.add('show');
+  }catch(e){}
+  finally{ _weekBusy=false; }
+}
+function closeWeekly(){ const o=$('week-ov'); if(o&&o.classList.contains('show')){ o.classList.remove('show'); API.post('/api/weekly/seen',{},10000).catch(()=>{}); } }
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ checkWeekly(); loadSuite(); } });
 
 /* ── Navigateurs détournés ─────────────────────────────────────────── */
 function renderBrowserHijack(d){

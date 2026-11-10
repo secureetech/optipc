@@ -155,10 +155,11 @@
   <div class="card" id="autres-logiciels" style="margin-top:16px">
     <div class="card-title">Les autres logiciels SecureeTech</div>
     <div class="card-sub" style="margin:4px 0 0">Gratuits à télécharger. Version Premium incluse avec un abonnement SecureeTech.</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:12px">
-      <div style="border:1px solid var(--border);border-radius:12px;padding:12px"><div style="font-weight:800">📄 SecureeTech PDF</div><div class="dim" style="font-size:12.5px;margin:4px 0 10px;line-height:1.5">Lire, modifier, remplir, signer et fusionner vos PDF en toute simplicité.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://api.secureetech.com/v1/pdf/download')">Télécharger gratuitement</button></div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:12px"><div style="font-weight:800">♻️ SecureeTech Recovery</div><div class="dim" style="font-size:12.5px;margin:4px 0 10px;line-height:1.5">Retrouvez les photos et fichiers supprimés par erreur, même après la Corbeille.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://api.secureetech.com/v1/recovery/download')">Télécharger gratuitement</button></div>
-      <div style="border:1px solid var(--border);border-radius:12px;padding:12px"><div style="font-weight:800">📱 OptiPhone</div><div class="dim" style="font-size:12.5px;margin:4px 0 10px;line-height:1.5">Nettoyez et protégez votre téléphone Android comme OptiPC le fait pour votre ordinateur.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://secureetech.com/optiphone/')">Découvrir OptiPhone</button></div>
+    <div class="suite-grid">
+      <div class="suite-card" id="suite-pdf"><div class="suite-t">📄 SecureeTech PDF<span class="suite-ok">✓ Installé</span></div><div class="suite-d">Lire, modifier, remplir, signer et fusionner vos PDF en toute simplicité.</div><button type="button" class="btn-su btn-primary suite-get" onclick="ouvrirLien('https://api.secureetech.com/v1/pdf/download')">Télécharger gratuitement</button><button type="button" class="btn-su btn-soft suite-open" onclick="openSuiteApp('pdf')">Ouvrir SecureeTech PDF</button></div>
+      <div class="suite-card" id="suite-recovery"><div class="suite-t">♻️ SecureeTech Recovery<span class="suite-ok">✓ Installé</span></div><div class="suite-d">Retrouvez les photos et fichiers supprimés par erreur, même après la Corbeille.</div><button type="button" class="btn-su btn-primary suite-get" onclick="ouvrirLien('https://api.secureetech.com/v1/recovery/download')">Télécharger gratuitement</button><button type="button" class="btn-su btn-soft suite-open" onclick="openSuiteApp('recovery')">Ouvrir SecureeTech Recovery</button></div>
+      <div class="suite-card" id="suite-extension"><div class="suite-t">🛡️ Extension SecureeTech Protection<span class="suite-ok">✓ Installée</span></div><div class="suite-d">Bloque les publicités, le pistage et les liens dangereux dans Chrome et Edge.</div><button type="button" class="btn-su btn-primary suite-get" onclick="installExtension()">Ajouter à mon navigateur</button></div>
+      <div class="suite-card"><div class="suite-t">📱 OptiPhone</div><div class="suite-d">Nettoyez et protégez votre téléphone Android comme OptiPC le fait pour votre ordinateur.</div><button type="button" class="btn-su btn-primary" onclick="ouvrirLien('https://secureetech.com/optiphone/')">Découvrir OptiPhone</button></div>
     </div>
   </div>
   <div style="display:none"><span id="st-upd"></span><span id="st-upd-sub"></span><span id="stat-total"></span><i id="stat-total-bar"></i><span id="stat-procs"></span><span id="stat-ram"></span><i id="stat-ram-bar"></i><div id="hist-prem"></div><div id="home-recs"></div><div id="rec-list"></div><button id="btn-fixall"></button><span id="res-title"></span><span id="res-sub"></span><div id="care-idle"></div><div id="care-results"></div><button id="optim-btn"></button><span id="scan-txt"></span><span id="scan-sub"></span><span id="scan-score"></span><span id="scan-score-sub"></span><div id="scan-ring"></div><div id="home-ring"></div><div id="ring-content"></div><svg><circle id="ring-arc"/></svg></div>
@@ -582,6 +583,21 @@
   <button class="trial-cta" style="background:var(--bar)" onclick="closeWelcome();openBuyPage()">Passer en Premium · dès 13,90 €/mois</button>
   <button class="wl-secondary" onclick="closeWelcome()">Continuer en version gratuite</button>
   <button onclick="closeWelcome();goActivate()" style="background:none;border:none;color:var(--acc-text);font-size:13px;padding:10px 4px 0;text-decoration:underline">J'ai déjà une clé Premium</button>
+</div></div>
+
+<div class="ov" id="week-ov" onclick="if(event.target===this)closeWeekly()"><div class="ov-box" style="max-width:460px;text-align:center">
+  <button class="ov-close" onclick="closeWeekly()" aria-label="Fermer">&times;</button>
+  <div style="font-size:30px;margin-bottom:4px">📊</div>
+  <div style="font-size:20px;font-weight:800">Votre bilan de la semaine</div>
+  <div class="dim" style="font-size:13px;margin:4px 0 14px" id="week-period"></div>
+  <div class="wk-grid" id="week-tiles"></div>
+  <div class="dim" style="font-size:13.5px;line-height:1.6;margin:12px 0 4px" id="week-msg"></div>
+  <div class="wk-ext" id="week-ext" style="display:none">
+    <div style="font-weight:800;font-size:14.5px">🛡️ Protégez aussi votre navigation</div>
+    <div class="dim" style="font-size:13px;line-height:1.5;margin:4px 0 10px">L'extension gratuite <b>SecureeTech Protection</b> bloque les publicités, le pistage et les liens dangereux dans Chrome et Edge.</div>
+    <button type="button" class="trial-cta" style="margin:0" onclick="installExtension()">Ajouter l'extension gratuitement</button>
+  </div>
+  <button type="button" class="wl-secondary" onclick="closeWeekly()">Fermer</button>
 </div></div>
 
 <div id="report"></div>
