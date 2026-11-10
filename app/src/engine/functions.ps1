@@ -3906,8 +3906,7 @@ function Set-Consent($version) {
 }
 function Open-ExternalUrl($url) {
     # Liste blanche stricte : le logiciel n'ouvre que nos propres pages.
-    # 10/11/2026 : + les liens de paiement Stripe (achat direct depuis le logiciel).
-    if([string]$url -notmatch '^https://((www\.)?secureetech\.com|buy\.stripe\.com)(/|$)'){
+    if([string]$url -notmatch '^https://(www\.)?secureetech\.com(/|$)'){
         return @{success=$false;error='Adresse non autorisee'}
     }
     try{ Start-Process ([string]$url); @{success=$true} }

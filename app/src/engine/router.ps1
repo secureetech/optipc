@@ -172,6 +172,10 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/browsers/repair$"  { $r = Repair-OptiBrowserHijack; if($r.ok -and $r.fixed){ Add-OptiGain 'browsers' ([double]$r.fixed) }; break }
             "^/api/boot$"            { $r = Get-OptiBootTime; break }
             "^/api/gains$"           { $r = Get-OptiGains; break }
+            "^/api/weekly$"          { $r = Get-OptiWeeklyLast; break }
+            "^/api/weekly/seen$"     { $r = Set-OptiWeeklySeen; break }
+            "^/api/suite$"           { $r = Get-OptiSecureeTechSuite; break }
+            "^/api/suite/open$"      { $r = Open-OptiSecureeTechApp ([string]$b.id); break }
             default                  { $status = 404; $r = @{error="Not found"} }
         }
     } catch {

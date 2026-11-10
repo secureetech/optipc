@@ -1208,9 +1208,125 @@ function Get-OptiTrialNudge {
     }catch{ return $null }
 }
 
+# ─── BILAN DE LA SEMAINE (10/11/2026) ─────────────────────────────────────────
+# Tous les 7 jours : notification Windows avec ce qu'OptiPC a fait (Go nettoyes,
+# menaces, protection), puis ecran « bilan » a l'ouverture suivante d'OptiPC.
+
+function Test-OptiExtensionInstalled {
+    # Extension SecureeTech Protection presente dans un profil Chrome, Edge ou Brave.
+    $bases = @("$env:LOCALAPPDATA\Google\Chrome\User Data", "$env:LOCALAPPDATA\Microsoft\Edge\User Data", "$env:LOCALAPPDATA\BraveSoftware\Brave-Browser\User Data")
+    foreach($b in $bases){
+        if(-not (Test-Path -LiteralPath $b)){ continue }
+        try{
+            foreach($p in @(Get-ChildItem -LiteralPath $b -Directory -EA SilentlyContinue)){
+                if(Test-Path -LiteralPath (Join-Path $p.FullName "Extensions\lcncnhcecgfjoepagjcnpemjpfmimdcn")){ return $true }
+            }
+        }catch{}
+    }
+    $false
+}
+
+function Get-OptiSecureeTechSuite {
+    # Logiciels SecureeTech installes sur ce PC (registre de desinstallation de Windows).
+    $known = @(
+        @{ id='pdf';      match='^SecureeTech PDF' },
+        @{ id='recovery'; match='^SecureeTech Recovery' }
+    )
+    $res = @{ extension = (Test-OptiExtensionInstalled) }
+    foreach($k in $known){ $res[$k.id] = $false }
+    $keys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*')
+    $items = @(); foreach($k in $keys){ try{ $items += @(Get-ItemProperty $k -EA SilentlyContinue) }catch{} }
+    foreach($k in $known){
+        $it = $items | Where-Object { [string]$_.DisplayName -match $k.match } | Select-Object -First 1
+        if($it){ $res[$k.id] = $true }
+    }
+    $res
+}
+
+function Open-OptiSecureeTechApp([string]$id){
+    # Ouvre un logiciel SecureeTech installe (liste fermee : pdf, recovery).
+    $match = @{ pdf='^SecureeTech PDF'; recovery='^SecureeTech Recovery' }[$id]
+    if(-not $match){ return @{ok=$false} }
+    $keys = @('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*')
+    foreach($k in $keys){
+        $it = @(Get-ItemProperty $k -EA SilentlyContinue) | Where-Object { [string]$_.DisplayName -match $match } | Select-Object -First 1
+        if(-not $it){ continue }
+        $exe = ([string]$it.DisplayIcon -replace ',\s*-?\d+$','').Trim([char[]]'" ')
+        if(-not $exe -or -not $exe.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase) -or -not (Test-Path -LiteralPath $exe)){ continue }
+        try{
+            # Lance au nom de l'utilisateur (sans droits administrateur) via l'Explorateur.
+            Start-Process 'explorer.exe' -ArgumentList ('"' + $exe + '"')
+            return @{ok=$true}
+        }catch{ return @{ok=$false;msg=$_.Exception.Message} }
+    }
+    @{ok=$false;msg='Logiciel introuvable'}
+}
+
+function Get-OptiWeeklyFile { Join-Path (Get-OptiDataDir) 'weekly.json' }
+
+function Invoke-OptiWeeklyReport {
+    # Appelee chaque heure par le logiciel. Ne fait quelque chose qu'une fois tous les 7 jours.
+    try{
+        $f = Get-OptiWeeklyFile
+        $w = Read-OptiJsonFile $f
+        $g = Get-OptiGains
+        $now = Get-Date
+        if(-not $w -or -not $w.at){
+            # Premier passage : point de depart, pas encore de bilan a montrer.
+            Write-OptiJsonFile $f @{ at=$now.ToString('yyyy-MM-ddTHH:mm:ss'); bytes=$g.bytes; threats=$g.threats; browsers=$g.browsers } | Out-Null
+            return $null
+        }
+        $since = [datetime]::Parse([string]$w.at)
+        if(($now - $since).TotalDays -lt 7){ return $null }
+        $dBytes = [math]::Max(0, [double]$g.bytes - [double]$w.bytes)
+        $dThr   = [math]::Max(0, [int]$g.threats - [int]$w.threats)
+        $dBrw   = [math]::Max(0, [int]$g.browsers - [int]$w.browsers)
+        $def = 0
+        try { $def = @(Get-MpThreatDetection -EA SilentlyContinue | Where-Object { $_.InitialDetectionTime -gt $since }).Count } catch {}
+        $sec = $null; try{ $sec = Get-SecurityStatus }catch{}
+        $prot = [bool]($sec -and ($sec.defEnabled -or $sec.otherAV))
+        $ext = Test-OptiExtensionInstalled
+        $rep = @{ from=$since.ToString('yyyy-MM-dd'); to=$now.ToString('yyyy-MM-dd'); bytes=$dBytes; bytesText=$(if($dBytes -gt 0){ Format-Size ([long]$dBytes) } else { '' });
+                  threats=($dThr + $def); browsers=$dBrw; protection=$prot; extension=$ext; unseen=$true }
+        Write-OptiJsonFile $f @{ at=$now.ToString('yyyy-MM-ddTHH:mm:ss'); bytes=$g.bytes; threats=$g.threats; browsers=$g.browsers; last=$rep } | Out-Null
+        $s = Get-OptiSettings
+        if(-not $s.notifPro){ return $null }
+        $parts = @()
+        if($dBytes -gt 0){ $parts += "$($rep.bytesText) nettoyés" }
+        if($rep.threats -gt 0){ $parts += "$($rep.threats) menace(s) traitée(s)" }
+        if($dBrw -gt 0){ $parts += "$dBrw navigateur(s) réparé(s)" }
+        $parts += $(if($prot){ 'protection active' } else { 'protection à vérifier' })
+        $text = 'Cette semaine : ' + ($parts -join ', ') + '.'
+        if(-not $ext){ $text += ' Installez aussi l''extension SecureeTech Protection.' }
+        $text += ' Cliquez pour voir le bilan.'
+        return @{show=$true;warn=(-not $prot);title='OptiPC : votre bilan de la semaine';text=$text}
+    }catch{ return $null }
+}
+
+function Get-OptiWeeklyLast {
+    $w = Read-OptiJsonFile (Get-OptiWeeklyFile)
+    if($w -and $w.last){ $r = @{}; foreach($p in $w.last.PSObject.Properties){ $r[$p.Name] = $p.Value }; $r.extension = (Test-OptiExtensionInstalled); return $r }
+    @{ unseen=$false }
+}
+
+function Set-OptiWeeklySeen {
+    try{
+        $f = Get-OptiWeeklyFile
+        $w = Read-OptiJsonFile $f
+        if($w -and $w.last){ $w.last.unseen = $false; Write-OptiJsonFile $f $w | Out-Null }
+    }catch{}
+    @{ok=$true}
+}
+
 function Invoke-OptiNudgeCheck {
     $tn = Get-OptiTrialNudge
     if($tn){ return $tn }
+    $wr = Invoke-OptiWeeklyReport
+    if($wr){
+        # La relance « version gratuite » attend 3 jours de plus : jamais deux notifications coup sur coup.
+        try{ Write-OptiJsonFile (Join-Path (Get-OptiDataDir) 'nudge.json') @{last=((Get-Date).AddDays(-4).ToString('yyyy-MM-ddTHH:mm:ss'))} | Out-Null }catch{}
+        return $wr
+    }
     # Une fois par semaine : analyse discrete. En version gratuite, une notification
     # montre les VRAIS chiffres (Go a nettoyer, points de securite).
     $st = Join-Path (Get-OptiDataDir) 'nudge.json'
