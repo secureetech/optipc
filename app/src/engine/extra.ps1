@@ -1144,7 +1144,73 @@ function Invoke-OptiScheduleTick {
     }
 }
 
+# ─── BILAN DE L'ESSAI PREMIUM (10/11/2026) ────────────────────────────────────
+# Ce qu'OptiPC a vraiment fait pendant l'essai, montre au client au moment de
+# choisir (rappels J3-J5 et ecran « essai termine »). Chiffres reels uniquement.
+
+function Add-OptiGain([string]$kind, [double]$value){
+    try{
+        if($value -le 0){ return }
+        $f = Join-Path (Get-OptiDataDir) 'gains.json'
+        $g = @{ bytes=0; threats=0; browsers=0; since=(Get-Date -Format 'yyyy-MM-dd') }
+        $j = Read-OptiJsonFile $f
+        if($j){ foreach($k in @('bytes','threats','browsers','since')){ if($null -ne $j.$k){ $g[$k] = $j.$k } } }
+        $g[$kind] = [double]$g[$kind] + $value
+        Write-OptiJsonFile $f $g | Out-Null
+    }catch{}
+}
+
+function Get-OptiGains {
+    $g = @{ bytes=0; threats=0; browsers=0; bytesText='' }
+    try{
+        $j = Read-OptiJsonFile (Join-Path (Get-OptiDataDir) 'gains.json')
+        if($j){ $g.bytes = [double]$j.bytes; $g.threats = [int]$j.threats; $g.browsers = [int]$j.browsers }
+        if($g.bytes -gt 0){ $g.bytesText = Format-Size ([long]$g.bytes) }
+    }catch{}
+    $g
+}
+
+function Get-OptiTrialNudge {
+    # Rappels de fin d'essai (notification Windows, meme fenetre fermee) :
+    # J3, J4, J5 puis une fois a la fin de l'essai. Une seule fois par jour.
+    try{
+        $s = Get-OptiSettings
+        if(-not $s.notifPro){ return $null }
+        $lic = Get-LicenseStatus
+        $f = Join-Path (Get-OptiDataDir) 'trial-nudge.json'
+        $done = @{}
+        $j = Read-OptiJsonFile $f
+        if($j){ foreach($p in $j.PSObject.Properties){ $done[$p.Name] = [string]$p.Value } }
+        $key = $null; $title = ''; $text = ''
+        $gains = Get-OptiGains
+        $bilan = ''
+        if($gains.bytes -gt 0){ $bilan = " OptiPC Premium a déjà libéré $($gains.bytesText)." }
+        if($lic.isPro -and $lic.trial -and $lic.expires_at){
+            $end = [datetime]::ParseExact([string]$lic.expires_at, 'yyyy-MM-dd', $null)
+            $left = [int][math]::Ceiling(($end.AddDays(1) - (Get-Date)).TotalDays) - 1
+            if($left -gt 2){ return $null }
+            $key = 'j' + $left
+            $title = 'OptiPC : votre essai Premium se termine'
+            if($left -le 0){ $text = "Dernier jour d'essai Premium aujourd'hui." }
+            else { $text = "Plus que $($left + 1) jours d'essai Premium." }
+            $text += $bilan + ' Cliquez pour garder Premium.'
+        } elseif(-not $lic.isPro -and $lic.trialEnded){
+            $key = 'fin'
+            $title = 'OptiPC : votre essai Premium est terminé'
+            $fin = ''
+            if($gains.bytes -gt 0){ $fin = " Pendant l'essai, Premium a libéré $($gains.bytesText)." }
+            $text = 'OptiPC est repassé en version gratuite.' + $fin + ' Cliquez pour garder toutes les fonctions.'
+        }
+        if(-not $key -or $done.ContainsKey($key)){ return $null }
+        $done[$key] = (Get-Date -Format 'yyyy-MM-dd')
+        Write-OptiJsonFile $f $done | Out-Null
+        return @{show=$true;warn=$false;title=$title;text=$text}
+    }catch{ return $null }
+}
+
 function Invoke-OptiNudgeCheck {
+    $tn = Get-OptiTrialNudge
+    if($tn){ return $tn }
     # Une fois par semaine : analyse discrete. En version gratuite, une notification
     # montre les VRAIS chiffres (Go a nettoyer, points de securite).
     $st = Join-Path (Get-OptiDataDir) 'nudge.json'

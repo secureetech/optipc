@@ -88,7 +88,7 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/apps/leftovers/clean$" { $r = Invoke-RemoveLeftovers $b.app; break }
             "^/api/apps/force-uninstall$" { $qq = Use-OptiFreeQuota 'uninstall' 3; if($qq.ok){ $r = Invoke-AppForceUninstall $b.app } else { $r = $qq }; break }
             "^/api/apps/force-uninstall-log$" { $r = Read-OptiTextLogTail "$env:TEMP\optipc_appforce_log.txt"; break }
-            "^/api/security/quarantine$"  { if(Test-IsPro){ $r = Invoke-Quarantine $b.path $b.reason } else { $r = @{ok=$false;msg="Fonction reservee a la version Premium"} }; break }
+            "^/api/security/quarantine$"  { if(Test-IsPro){ $r = Invoke-Quarantine $b.path $b.reason; if($r.ok){ Add-OptiGain 'threats' 1 } } else { $r = @{ok=$false;msg="Fonction reservee a la version Premium"} }; break }
             "^/api/security/ignore$"      { $r = Add-WhiteList $b.path $b.name; break }
             "^/api/security/ignore/clear$"{ $r = Clear-WhiteList; break }
             "^/api/quarantine$"           { $r = @{items=@(Get-QuarManifest)}; break }
@@ -147,7 +147,7 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             }
             "^/api/openurl$"         { $r = Open-ExternalUrl $b.url; break }
             "^/api/security/fix$"    { $r = Do-SecurityFix $b.action; break }
-            "^/api/security/remove$" { if(Test-IsPro){ $r = Remove-ThreatItem $b.path } else { $r = @{ok=$false;msg="Fonction reservee a la version Premium"} }; break }
+            "^/api/security/remove$" { if(Test-IsPro){ $r = Remove-ThreatItem $b.path; if($r.ok){ Add-OptiGain 'threats' 1 } } else { $r = @{ok=$false;msg="Fonction reservee a la version Premium"} }; break }
             "^/api/security/open$"   { $r = Open-ThreatPath $b.path; break }
             "^/api/access/status$"   { $r = Get-AccessStatus; break }
             "^/api/access/toggle$"   { $r = Set-AccessCtrl $b.feature ([bool]$b.enable); break }
@@ -169,8 +169,9 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/score/history$"   { $r = Get-OptiScoreHistory; break }
             "^/api/callback$"        { $r = Send-OptiCallbackRequest ([string]$b.prenom) ([string]$b.telephone) ([string]$b.sujet); break }
             "^/api/browsers/hijack$"  { $r = Get-OptiBrowserHijack; break }
-            "^/api/browsers/repair$"  { $r = Repair-OptiBrowserHijack; break }
+            "^/api/browsers/repair$"  { $r = Repair-OptiBrowserHijack; if($r.ok -and $r.fixed){ Add-OptiGain 'browsers' ([double]$r.fixed) }; break }
             "^/api/boot$"            { $r = Get-OptiBootTime; break }
+            "^/api/gains$"           { $r = Get-OptiGains; break }
             default                  { $status = 404; $r = @{error="Not found"} }
         }
     } catch {

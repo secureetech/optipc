@@ -225,6 +225,7 @@ function Invoke-Cleaning($selected){
             if($lines.Count -gt 200){ $lines | Select-Object -Last 200 | Set-Content $logFile -EA SilentlyContinue }
         }
     } catch {}
+    try{ Add-OptiGain 'bytes' ([double]$cleaned) }catch{}
     @{cleaned=(Format-Size $cleaned);cleanedBytes=$cleaned;success=$true;limitedBytes=$limitedBytes;limited=(Format-Size $limitedBytes)}
 }
 
@@ -826,6 +827,7 @@ function Clear-BrowserCache($browsers) {
         $d = Get-OperaData
         foreach($p in $d.paths){ if(Test-Path $p){ $cleaned += Get-FolderSize $p; Get-ChildItem $p -Force -EA SilentlyContinue | Remove-Item -Force -Recurse -EA SilentlyContinue } }
     }
+    try{ Add-OptiGain 'bytes' ([double]$cleaned) }catch{}
     @{cleaned=(Format-Size $cleaned);cleanedBytes=$cleaned;success=$true}
 }
 function Register-RebootDelete($p) {
@@ -3904,7 +3906,8 @@ function Set-Consent($version) {
 }
 function Open-ExternalUrl($url) {
     # Liste blanche stricte : le logiciel n'ouvre que nos propres pages.
-    if([string]$url -notmatch '^https://(www\.)?secureetech\.com(/|$)'){
+    # 10/11/2026 : + les liens de paiement Stripe (achat direct depuis le logiciel).
+    if([string]$url -notmatch '^https://((www\.)?secureetech\.com|buy\.stripe\.com)(/|$)'){
         return @{success=$false;error='Adresse non autorisee'}
     }
     try{ Start-Process ([string]$url); @{success=$true} }
