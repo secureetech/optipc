@@ -35,6 +35,7 @@ jobs:
 
           # Entrées de test : un programme au démarrage et un chemin d'application qui pointent vers un fichier absent.
           $run = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
+          if(-not (Test-Path $run)){ New-Item $run -Force | Out-Null }
           New-ItemProperty -Path $run -Name 'OptiPCTest [1]' -Value '"C:\Dossier Absent\fantome.exe" /auto' -Force | Out-Null
           New-Item 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\optipctest.exe' -Force | Out-Null
           Set-ItemProperty 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\optipctest.exe' -Name '(default)' -Value 'C:\Dossier Absent\optipctest.exe'
