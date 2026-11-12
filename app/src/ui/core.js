@@ -191,7 +191,7 @@ function loadPersistedLogs(){
   }catch(e){}
 }
 function clearLogs(){_logs=[];try{localStorage.removeItem('optipc_logs');}catch(e){}document.getElementById('activity-log').innerHTML='';}
-function fmtSz(b){if(!b||b<=0)return'0 o';if(b>=1073741824)return(b/1073741824).toFixed(1).replace('.',',')+' Go';if(b>=1048576)return Math.round(b/1048576)+' Mo';if(b>=1024)return Math.round(b/1024)+' Ko';return b+' B';}
+function fmtSz(b){if(!b||b<=0)return'0 o';if(b>=1073741824)return(b/1073741824).toFixed(1).replace('.',',')+' Go';if(b>=1048576)return Math.round(b/1048576)+' Mo';if(b>=1024)return Math.round(b/1024)+' Ko';return b+' o';}
 function escS(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
