@@ -1873,7 +1873,10 @@ function Invoke-OptiTuneOne([string]$id, $st){
                     Copy-Item -LiteralPath $b.file -Destination ($b.file + '.optipc.bak') -Force -EA Stop
                     Write-OptiJsonDict $b.file $d
                     $known = $false; foreach($u in $undo){ if($u.file -eq $b.file){ $known = $true } }
-                    if(-not $known){ [void]$undo.Add(@{file=$b.file; exe=$b.exe; id=$b.id; bg=$b.bg; sb=$b.sb}) }
+                    # Valeurs d'origine en types simples (une valeur enveloppee par PowerShell ne s'enregistre pas en JSON).
+                    $bg0 = $null; if($null -ne $b.bg){ $bg0 = [bool]$b.bg }
+                    $sb0 = $null; if($null -ne $b.sb){ $sb0 = [bool]$b.sb }
+                    if(-not $known){ [void]$undo.Add(@{file=[string]$b.file; exe=[string]$b.exe; id=[string]$b.id; bg=$bg0; sb=$sb0}) }
                     [void]$done.Add($b.name)
                 }catch{ $err = $_.Exception.Message }
             }
