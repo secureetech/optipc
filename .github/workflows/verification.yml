@@ -69,8 +69,6 @@ jobs:
           $ids = @('menus','widgets','tasks','bgapps','game','browsers','faststart')
           $a = Invoke-OptiTune $ids
           foreach($k in $ids){ Write-Host ("  appliqué {0,-10} ok={1} {2}" -f $k, $a.results[$k].ok, $a.results[$k].msg + " " + $a.results[$k].error) }
-          $lsf = "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Local State"
-          if(Test-Path $lsf){ $dd = Read-OptiJsonDict $lsf; Write-Host ("  Edge Local State : background_mode=" + ($dd['background_mode'] | ConvertTo-Json -Compress) + " startup_boost=" + ($dd['startup_boost'] | ConvertTo-Json -Compress) + " lu=" + (Get-OptiDictPath $dd 'background_mode.enabled') + "/" + (Get-OptiDictPath $dd 'startup_boost.enabled') + " edge ouvert=" + @(Get-Process msedge -EA SilentlyContinue).Count) }
           $t2 = Get-OptiTune
           if(($t.items | Where-Object { $_.id -eq 'browsers' }).todo -and -not $a.results['browsers'].ok){ throw "Navigateurs : $($a.results['browsers'].error)" }
           foreach($k in 'menus','widgets','bgapps','browsers'){ $it = $t2.items | Where-Object { $_.id -eq $k }; if($it.todo -ne 0){ throw "$k : il reste $($it.todo) réglage(s) après application" } }

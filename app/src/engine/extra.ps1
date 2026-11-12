@@ -1745,7 +1745,7 @@ function Get-OptiTuneTasks {
             if(($exact -contains ($t.TaskPath + $t.TaskName)) -or ($t.TaskName -match $pat)){ [void]$out.Add($t) }
         }
     }catch{}
-    ,@($out)
+    @($out)
 }
 
 # Applications Windows qui tournent en arriere-plan sans etre ouvertes. Courrier, Calendrier, Photos,
@@ -1773,7 +1773,7 @@ function Get-OptiTuneBrowsers {
             if($need){ [void]$out.Add(@{id=$b.id; name=$b.name; exe=$b.exe; file=$ls; bg=$bg; sb=$sb}) }
         }catch{}
     }
-    ,@($out)
+    @($out)
 }
 
 function Get-OptiDiskKind {
