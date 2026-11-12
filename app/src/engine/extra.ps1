@@ -1864,10 +1864,10 @@ function Invoke-OptiTuneOne([string]$id, $st){
                 if(@(Get-Process -Name ($b.exe -replace '\.exe$','') -EA SilentlyContinue).Count){ [void]$open.Add($b.name); continue }
                 try{
                     $d = Read-OptiJsonDict $b.file
-                    if(-not $d.ContainsKey('background_mode') -or -not ($d['background_mode'] -is [System.Collections.IDictionary])){ $d['background_mode'] = New-Object 'System.Collections.Generic.Dictionary[string,object]' }
+                    if(-not $d.ContainsKey('background_mode') -or -not ($d['background_mode'] -is [System.Collections.IDictionary])){ $d['background_mode'] = [System.Collections.Generic.Dictionary[string,object]]::new() }
                     $d['background_mode']['enabled'] = $false
                     if($b.id -eq 'edge'){
-                        if(-not $d.ContainsKey('startup_boost') -or -not ($d['startup_boost'] -is [System.Collections.IDictionary])){ $d['startup_boost'] = New-Object 'System.Collections.Generic.Dictionary[string,object]' }
+                        if(-not $d.ContainsKey('startup_boost') -or -not ($d['startup_boost'] -is [System.Collections.IDictionary])){ $d['startup_boost'] = [System.Collections.Generic.Dictionary[string,object]]::new() }
                         $d['startup_boost']['enabled'] = $false
                     }
                     Copy-Item -LiteralPath $b.file -Destination ($b.file + '.optipc.bak') -Force -EA Stop

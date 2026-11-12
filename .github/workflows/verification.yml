@@ -70,13 +70,14 @@ jobs:
           $a = Invoke-OptiTune $ids
           foreach($k in $ids){ Write-Host ("  appliqué {0,-10} ok={1} {2}" -f $k, $a.results[$k].ok, $a.results[$k].msg + " " + $a.results[$k].error) }
           $t2 = Get-OptiTune
-          foreach($k in 'menus','widgets','bgapps'){ $it = $t2.items | Where-Object { $_.id -eq $k }; if($it.todo -ne 0){ throw "$k : il reste $($it.todo) réglage(s) après application" } }
+          if(($t.items | Where-Object { $_.id -eq 'browsers' }).todo -and -not $a.results['browsers'].ok){ throw "Navigateurs : $($a.results['browsers'].error)" }
+          foreach($k in 'menus','widgets','bgapps','browsers'){ $it = $t2.items | Where-Object { $_.id -eq $k }; if($it.todo -ne 0){ throw "$k : il reste $($it.todo) réglage(s) après application" } }
           if([int](Get-ItemProperty 'HKCU:\Control Panel\Desktop').MenuShowDelay -gt 20){ throw "Délai des menus non modifié" }
           $again = Invoke-OptiTune @('menus')
           $u = Undo-OptiTune @()
           Write-Host "Retour en arrière : $($u.restored) réglage(s) restauré(s)"
           if((Get-ItemProperty 'HKCU:\Control Panel\Desktop').MenuShowDelay -ne $delay0){ throw "Délai des menus non restauré ($delay0 attendu)" }
           $t3 = Get-OptiTune
-          foreach($k in 'menus','widgets','bgapps','tasks'){ $b0 = ($t.items | Where-Object { $_.id -eq $k }).todo; $b3 = ($t3.items | Where-Object { $_.id -eq $k }).todo; Write-Host "  $k : avant=$b0 après retour=$b3"; if($b0 -ne $b3){ throw "$k : état d'origine non retrouvé" } }
+          foreach($k in 'menus','widgets','bgapps','tasks','browsers'){ $b0 = ($t.items | Where-Object { $_.id -eq $k }).todo; $b3 = ($t3.items | Where-Object { $_.id -eq $k }).todo; Write-Host "  $k : avant=$b0 après retour=$b3"; if($b0 -ne $b3){ throw "$k : état d'origine non retrouvé" } }
           if(($t3.items | Where-Object { $_.applied }).Count){ throw "Des réglages sont encore marqués comme appliqués" }
           Write-Host "TOUT EST BON"
