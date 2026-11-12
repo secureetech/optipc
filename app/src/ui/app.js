@@ -80,11 +80,21 @@ function applyTheme(){
 function setTheme(p){ try{ localStorage.setItem('optipc_theme',p); }catch(e){} applyTheme(); }
 function toggleTheme(){ setTheme(effectiveTheme(getThemePref())==='dark'?'light':'dark'); }
 try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(getThemePref()==='auto')applyTheme(); }); }catch(e){}
+/* Taille de l'affichage : le choix du client (Normal / Grand / Très grand) multiplié par un ajustement
+   automatique. Sur un petit écran, ou quand Windows agrandit tout (125 %, 150 %), l'interface est
+   réduite pour tenir entière dans la fenêtre au lieu de déborder en très gros. */
+function fitZoom(){ return Math.max(0.6,Math.min(1,window.innerWidth/1500,window.innerHeight/800)); }
+function applyZoom(){
+  let z=1; try{ z=parseFloat(localStorage.getItem('optipc_zoom'))||1; }catch(e){}
+  document.documentElement.style.zoom=(z*fitZoom()).toFixed(3);
+}
 function setZoom(z){
   try{ localStorage.setItem('optipc_zoom',z); }catch(e){}
-  document.documentElement.style.zoom=z;
+  applyZoom();
   document.querySelectorAll('#set-zoom button').forEach(b=>b.classList.toggle('on',b.dataset.v===String(z)));
 }
+window.addEventListener('resize',applyZoom);
+applyZoom();
 function syncSettingsUI(){
   const pref=getThemePref();
   document.querySelectorAll('#set-theme button').forEach(b=>b.classList.toggle('on',b.dataset.v===pref));

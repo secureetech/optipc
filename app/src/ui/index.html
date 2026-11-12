@@ -5,7 +5,7 @@
 <title>OptiPC</title>
 <link rel="icon" href="logo.png">
 <link rel="stylesheet" href="app.css">
-<script>try{var t=localStorage.getItem('optipc_theme')||'light';if(t==='auto'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);var z=localStorage.getItem('optipc_zoom');if(z){document.documentElement.style.zoom=z;}}catch(e){}</script>
+<script>try{var t=localStorage.getItem('optipc_theme')||'light';if(t==='auto'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);var z=parseFloat(localStorage.getItem('optipc_zoom'))||1;document.documentElement.style.zoom=z*Math.max(0.6,Math.min(1,innerWidth/1500,innerHeight/800));}catch(e){}</script>
 </head>
 <body>
 
