@@ -1627,3 +1627,367 @@ function Repair-OptiBrowserHijack {
     $after = Get-OptiBrowserHijack
     @{ ok = ($fixed -gt 0 -or $scan.count -eq 0); fixed = $fixed; failed = $fail; remaining = $after.count; msg = "$fixed problème(s) corrigé(s)" + $(if($after.count){ " · $($after.count) restant(s)" } else { '' }) }
 }
+
+# ─── OPTIMISATIONS DE WINDOWS ───────────────────────────────────────────────
+# Chaque reglage sait dire ce qu'il reste a faire (todo), s'appliquer, et se remettre comme avant :
+# les valeurs d'origine sont gardees dans tune.json.
+
+function Get-OptiTuneFile { Join-Path (Get-OptiDataDir) 'tune.json' }
+function Get-OptiTuneState {
+    $h = @{}
+    try{
+        $f = Get-OptiTuneFile
+        if(Test-Path -LiteralPath $f){ $d = Read-OptiJsonDict $f; if($d){ foreach($k in @($d.Keys)){ $h[$k] = $d[$k] } } }
+    }catch{}
+    $h
+}
+function Save-OptiTuneState($st){ try{ Write-OptiJsonDict (Get-OptiTuneFile) $st }catch{} }
+
+# Reglages de registre, par groupe. le = « deja bon si la valeur actuelle est inferieure ou egale »,
+# skip = « ne rien faire si la valeur n'existe pas sur ce PC ».
+function Get-OptiTuneRegDefs {
+    $b = [Environment]::OSVersion.Version.Build
+    $adv = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+    $cdm = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager'
+    $w = New-Object System.Collections.ArrayList
+    if($b -ge 22000){
+        [void]$w.Add(@{p='HKLM:\SOFTWARE\Policies\Microsoft\Dsh'; n='AllowNewsAndInterests'; v=0; t='DWord'})
+        [void]$w.Add(@{p=$adv; n='Start_IrisRecommendations'; v=0; t='DWord'})
+        [void]$w.Add(@{p=$adv; n='ShowCopilotButton'; v=0; t='DWord'; skip=$true})
+    } else {
+        [void]$w.Add(@{p='HKLM:\SOFTWARE\Policies\Microsoft\Windows\Windows Feeds'; n='EnableFeeds'; v=0; t='DWord'})
+    }
+    foreach($n in 'SubscribedContent-338388Enabled','SubscribedContent-338389Enabled','SubscribedContent-310093Enabled','SubscribedContent-353694Enabled','SubscribedContent-353696Enabled','SystemPaneSuggestionsEnabled','SilentInstalledAppsEnabled','SoftLandingEnabled'){
+        [void]$w.Add(@{p=$cdm; n=$n; v=0; t='DWord'})
+    }
+    @{
+        widgets = @($w)
+        menus   = @(
+            @{p='HKCU:\Control Panel\Desktop'; n='MenuShowDelay'; v='20'; t='String'; le=$true},
+            @{p='HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize'; n='EnableTransparency'; v=0; t='DWord'}
+        )
+        game    = @(
+            @{p='HKCU:\Software\Microsoft\GameBar'; n='AutoGameModeEnabled'; v=1; t='DWord'},
+            @{p='HKCU:\Software\Microsoft\GameBar'; n='AllowAutoGameMode'; v=1; t='DWord'},
+            @{p='HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers'; n='HwSchMode'; v=2; t='DWord'; skip=$true}
+        )
+        faststart = @(
+            @{p='HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power'; n='HiberbootEnabled'; v=1; t='DWord'}
+        )
+    }
+}
+function Get-OptiRegCurrent($d){
+    try{ return (Get-ItemProperty -LiteralPath $d.p -Name $d.n -EA Stop).($d.n) }catch{ return $null }
+}
+function Test-OptiRegTodo($d){
+    $c = Get-OptiRegCurrent $d
+    if($null -eq $c){ return (-not $d.skip) }
+    if($d.le){ try{ return ([int]$c -gt [int]$d.v) }catch{ return $true } }
+    ([string]$c -ne [string]$d.v)
+}
+function Set-OptiRegTune([string]$id, $defs, $st){
+    $undo = New-Object System.Collections.ArrayList
+    if($st.reg -and $st.reg[$id]){ foreach($u in @($st.reg[$id])){ [void]$undo.Add($u) } }
+    $n = 0
+    foreach($d in @($defs)){
+        if(-not (Test-OptiRegTodo $d)){ continue }
+        $c = Get-OptiRegCurrent $d
+        try{
+            if(-not (Test-Path -LiteralPath $d.p)){ New-Item -Path $d.p -Force -EA Stop | Out-Null }
+            Set-ItemProperty -LiteralPath $d.p -Name $d.n -Value $d.v -Type $d.t -Force -EA Stop
+            $known = $false
+            foreach($u in $undo){ if($u.p -eq $d.p -and $u.n -eq $d.n){ $known = $true } }
+            # On garde toujours la toute premiere valeur d'origine.
+            if(-not $known){ [void]$undo.Add(@{p=$d.p; n=$d.n; had=($null -ne $c); v=$c; t=$d.t}) }
+            $n++
+        }catch{}
+    }
+    if(-not $st.reg){ $st.reg = @{} }
+    $reg = @{}; foreach($k in @($st.reg.Keys)){ $reg[$k] = $st.reg[$k] }
+    $reg[$id] = @($undo); $st.reg = $reg
+    $n
+}
+function Undo-OptiRegTune([string]$id, $st){
+    $n = 0
+    if(-not ($st.reg -and $st.reg[$id])){ return 0 }
+    foreach($u in @($st.reg[$id])){
+        try{
+            if($u.had){ Set-ItemProperty -LiteralPath $u.p -Name $u.n -Value $u.v -Type $u.t -Force -EA Stop }
+            else { Remove-ItemProperty -LiteralPath $u.p -Name $u.n -Force -EA Stop }
+            $n++
+        }catch{}
+    }
+    $reg = @{}; foreach($k in @($st.reg.Keys)){ if($k -ne $id){ $reg[$k] = $st.reg[$k] } }
+    $st.reg = $reg
+    $n
+}
+
+# Taches planifiees inutiles : telemetrie de Windows et des fabricants. Les mises a jour de securite
+# (navigateurs, Adobe Reader, antivirus) ne sont jamais touchees.
+function Get-OptiTuneTasks {
+    $exact = @(
+        '\Microsoft\Windows\Application Experience\Microsoft Compatibility Appraiser',
+        '\Microsoft\Windows\Application Experience\ProgramDataUpdater',
+        '\Microsoft\Windows\Customer Experience Improvement Program\Consolidator',
+        '\Microsoft\Windows\Customer Experience Improvement Program\UsbCeip',
+        '\Microsoft\Windows\DiskDiagnostic\Microsoft-Windows-DiskDiagnosticDataCollector',
+        '\Microsoft\Windows\Feedback\Siuf\DmClient',
+        '\Microsoft\Windows\Feedback\Siuf\DmClientOnScenarioDownload',
+        '\Microsoft\Windows\Autochk\Proxy',
+        '\Microsoft\Windows\Maps\MapsUpdateTask',
+        '\Microsoft\Windows\Maps\MapsToastTask'
+    )
+    $pat = '^(NvTmRep|NvTmMon|HPCustParticipation|AdobeGCInvoker|CCleaner Update|CCleanerCrashReporting|OfficeTelemetryAgent|Lenovo Customer Feedback)'
+    $out = New-Object System.Collections.ArrayList
+    try{
+        foreach($t in @(Get-ScheduledTask -EA Stop)){
+            if([string]$t.State -eq 'Disabled'){ continue }
+            if(($exact -contains ($t.TaskPath + $t.TaskName)) -or ($t.TaskName -match $pat)){ [void]$out.Add($t) }
+        }
+    }catch{}
+    ,@($out)
+}
+
+# Applications Windows qui tournent en arriere-plan sans etre ouvertes. Courrier, Calendrier, Photos,
+# Alarmes, Mobile connecte et Teams restent libres : le client peut en avoir besoin.
+function Get-OptiTuneBgApps {
+    $pat = '(?i)(Xbox|GamingApp|BingWeather|BingNews|BingSports|BingFinance|GetHelp|Getstarted|SolitaireCollection|549981C3F5F10|FeedbackHub|WindowsMaps|Microsoft\.People|3DViewer|Print3D|MixedReality|ZuneMusic|ZuneVideo|OfficeHub|SkypeApp|Clipchamp|Microsoft\.Todos|PowerAutomate|LinkedIn|Disney|SpotifyAB|king\.com|CandyCrush|Facebook|TikTok|Netflix|AmazonVideo|Microsoft\.Wallet|OneConnect|Microsoft\.Messaging)'
+    $key = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
+    $cur = @(); try{ $cur = @((Get-ItemProperty -LiteralPath $key -Name 'LetAppsRunInBackground_ForceDenyTheseApps' -EA Stop).LetAppsRunInBackground_ForceDenyTheseApps) }catch{}
+    $found = @(); try{ $found = @(Get-AppxPackage -AllUsers -EA Stop | Where-Object { $_.PackageFamilyName -match $pat } | ForEach-Object { $_.PackageFamilyName } | Select-Object -Unique) }catch{}
+    @{ key=$key; current=@($cur | Where-Object { $_ }); todo=@($found | Where-Object { $cur -notcontains $_ }) }
+}
+
+function Get-OptiTuneBrowsers {
+    # Chrome, Edge et Brave restent en memoire apres fermeture ; Edge se precharge au demarrage de Windows.
+    $out = New-Object System.Collections.ArrayList
+    foreach($b in @(Get-OptiBrowserDefs)){
+        if(-not $b.data){ continue }
+        $ls = Join-Path $b.data 'Local State'
+        if(-not (Test-Path -LiteralPath $ls)){ continue }
+        try{
+            $d = Read-OptiJsonDict $ls
+            $bg = Get-OptiDictPath $d 'background_mode.enabled'
+            $sb = $null; if($b.id -eq 'edge'){ $sb = Get-OptiDictPath $d 'startup_boost.enabled' }
+            $need = ($bg -ne $false) -or ($b.id -eq 'edge' -and $sb -ne $false)
+            if($need){ [void]$out.Add(@{id=$b.id; name=$b.name; exe=$b.exe; file=$ls; bg=$bg; sb=$sb}) }
+        }catch{}
+    }
+    ,@($out)
+}
+
+function Get-OptiDiskKind {
+    $kind = ''
+    try{
+        $part = Get-Partition -DriveLetter C -EA Stop
+        $pd = Get-PhysicalDisk -EA Stop | Where-Object { [string]$_.DeviceId -eq [string]$part.DiskNumber } | Select-Object -First 1
+        if($pd){ $kind = [string]$pd.MediaType }
+    }catch{}
+    $kind
+}
+
+function Get-OptiTune {
+    $st = Get-OptiTuneState
+    $defs = Get-OptiTuneRegDefs
+    $items = New-Object System.Collections.ArrayList
+    $hasUndo = { param($id) [bool]($st.reg -and $st.reg[$id] -and @($st.reg[$id]).Count) }
+
+    # Disque : une optimisation par mois suffit.
+    $kind = Get-OptiDiskKind
+    $last = $null; try{ if($st.disk){ $last = [datetime]$st.disk } }catch{}
+    $due = (-not $last) -or (((Get-Date) - $last).TotalDays -ge 30)
+    $label = 'Disque C:'; if($kind -eq 'SSD'){ $label = 'SSD' } elseif($kind -eq 'HDD'){ $label = 'Disque dur' }
+    [void]$items.Add(@{id='disk'; todo=$(if($due){1}else{0}); kind=$kind; detail=$(if($last){ "$label · optimisé le " + $last.ToString('dd/MM/yyyy') } else { "$label · jamais optimisé par OptiPC" }); applied=$false})
+
+    $bg = Get-OptiTuneBgApps
+    [void]$items.Add(@{id='bgapps'; todo=@($bg.todo).Count; detail="$(@($bg.todo).Count) application(s) en arrière-plan"; applied=[bool]$st.bg})
+
+    $br = @(Get-OptiTuneBrowsers)
+    [void]$items.Add(@{id='browsers'; todo=$br.Count; detail=$(if($br.Count){ ($br | ForEach-Object { $_.name }) -join ', ' } else { 'Déjà réglé' }); applied=[bool]$st.browsers})
+
+    $tk = @(Get-OptiTuneTasks)
+    [void]$items.Add(@{id='tasks'; todo=$tk.Count; detail="$($tk.Count) tâche(s) active(s)"; applied=[bool]($st.tasks -and @($st.tasks).Count)})
+
+    $fs = @($defs.faststart | Where-Object { Test-OptiRegTodo $_ }).Count
+    $free = 0; try{ $free = [math]::Round((Get-PSDrive C -EA Stop).Free / 1GB) }catch{}
+    if($fs -and $free -lt 20){ $fs = 0 }
+    [void]$items.Add(@{id='faststart'; todo=$fs; detail=$(if($fs){ 'Actuellement désactivé' } else { 'Déjà actif' }); applied=(& $hasUndo 'faststart')})
+
+    $wd = @($defs.widgets | Where-Object { Test-OptiRegTodo $_ }).Count
+    [void]$items.Add(@{id='widgets'; todo=$wd; detail="$wd réglage(s) actif(s)"; applied=(& $hasUndo 'widgets')})
+
+    $desktop = $true; try{ if(@(Get-CimInstance Win32_Battery -EA Stop).Count){ $desktop = $false } }catch{}
+    $act = Get-ActivePlanGuid
+    $mine = ''; if($st.power -and $st.power.created){ $mine = [string]$st.power.created }
+    $pw = 0; if($desktop -and (-not $mine -or $act -ne $mine)){ $pw = 1 }
+    [void]$items.Add(@{id='power'; todo=$pw; desktop=$desktop; detail=$(if(-not $desktop){ 'PC portable : non proposé' } elseif($pw){ 'PC fixe détecté' } else { 'Déjà actif' }); applied=[bool]$mine})
+
+    $mn = @($defs.menus | Where-Object { Test-OptiRegTodo $_ }).Count
+    [void]$items.Add(@{id='menus'; todo=$mn; detail=$(if($mn){ "$mn réglage(s) à appliquer" } else { 'Déjà réglé' }); applied=(& $hasUndo 'menus')})
+
+    $gm = @($defs.game | Where-Object { Test-OptiRegTodo $_ }).Count
+    [void]$items.Add(@{id='game'; todo=$gm; detail=$(if($gm){ 'Désactivé' } else { 'Déjà actif' }); applied=(& $hasUndo 'game')})
+
+    @{ items=@($items); count=@($items | Where-Object { $_.todo -gt 0 -and $_.id -ne 'game' -and $_.id -ne 'power' }).Count }
+}
+
+function Invoke-OptiTuneOne([string]$id, $st){
+    $defs = Get-OptiTuneRegDefs
+    switch($id){
+        'disk' {
+            $kind = Get-OptiDiskKind
+            try{ Start-Process -FilePath "$env:WINDIR\System32\defrag.exe" -ArgumentList 'C:','/O' -WindowStyle Hidden -EA Stop | Out-Null }catch{ return @{ok=$false; msg='non disponible'} }
+            $st.disk = (Get-Date).ToString('s')
+            if($kind -eq 'SSD'){ return @{ok=$true; n=1; msg='SSD optimisé (TRIM)'} }
+            return @{ok=$true; n=1; msg='défragmentation lancée en arrière-plan'}
+        }
+        'bgapps' {
+            $bg = Get-OptiTuneBgApps
+            if(-not @($bg.todo).Count){ return @{ok=$true; n=0; msg='déjà fait'} }
+            try{
+                if(-not (Test-Path -LiteralPath $bg.key)){ New-Item -Path $bg.key -Force -EA Stop | Out-Null }
+                if(-not $st.bg){
+                    $mode = $null; try{ $mode = (Get-ItemProperty -LiteralPath $bg.key -Name 'LetAppsRunInBackground' -EA Stop).LetAppsRunInBackground }catch{}
+                    $st.bg = @{ hadMode=($null -ne $mode); mode=$mode; list=@($bg.current) }
+                }
+                if($null -eq (Get-OptiRegCurrent @{p=$bg.key; n='LetAppsRunInBackground'})){ Set-ItemProperty -LiteralPath $bg.key -Name 'LetAppsRunInBackground' -Value 0 -Type DWord -Force -EA Stop }
+                Set-ItemProperty -LiteralPath $bg.key -Name 'LetAppsRunInBackground_ForceDenyTheseApps' -Value ([string[]](@($bg.current) + @($bg.todo))) -Type MultiString -Force -EA Stop
+                return @{ok=$true; n=@($bg.todo).Count; msg="$(@($bg.todo).Count) coupée(s)"}
+            }catch{ return @{ok=$false; msg='non effectué'} }
+        }
+        'browsers' {
+            $done = New-Object System.Collections.ArrayList; $open = New-Object System.Collections.ArrayList
+            $undo = New-Object System.Collections.ArrayList
+            if($st.browsers){ foreach($u in @($st.browsers)){ [void]$undo.Add($u) } }
+            foreach($b in @(Get-OptiTuneBrowsers)){
+                # Un navigateur ouvert reecrit ses reglages en se fermant : on attend qu'il soit ferme.
+                if(@(Get-Process -Name ($b.exe -replace '\.exe$','') -EA SilentlyContinue).Count){ [void]$open.Add($b.name); continue }
+                try{
+                    $d = Read-OptiJsonDict $b.file
+                    if(-not $d.ContainsKey('background_mode') -or -not ($d['background_mode'] -is [System.Collections.IDictionary])){ $d['background_mode'] = New-Object 'System.Collections.Generic.Dictionary[string,object]' }
+                    $d['background_mode']['enabled'] = $false
+                    if($b.id -eq 'edge'){
+                        if(-not $d.ContainsKey('startup_boost') -or -not ($d['startup_boost'] -is [System.Collections.IDictionary])){ $d['startup_boost'] = New-Object 'System.Collections.Generic.Dictionary[string,object]' }
+                        $d['startup_boost']['enabled'] = $false
+                    }
+                    Copy-Item -LiteralPath $b.file -Destination ($b.file + '.optipc.bak') -Force -EA Stop
+                    Write-OptiJsonDict $b.file $d
+                    $known = $false; foreach($u in $undo){ if($u.file -eq $b.file){ $known = $true } }
+                    if(-not $known){ [void]$undo.Add(@{file=$b.file; exe=$b.exe; id=$b.id; bg=$b.bg; sb=$b.sb}) }
+                    [void]$done.Add($b.name)
+                }catch{}
+            }
+            $st.browsers = @($undo)
+            if($done.Count){ return @{ok=$true; n=$done.Count; msg=(($done -join ' et ') + $(if($open.Count){ ' · ' + ($open -join ', ') + ' : à refaire navigateur fermé' } else { '' }))} }
+            if($open.Count){ return @{ok=$false; n=0; msg=(($open -join ', ') + ' ouvert : à refaire navigateur fermé')} }
+            return @{ok=$true; n=0; msg='déjà fait'}
+        }
+        'tasks' {
+            $undo = New-Object System.Collections.ArrayList
+            if($st.tasks){ foreach($u in @($st.tasks)){ [void]$undo.Add($u) } }
+            $n = 0
+            foreach($t in @(Get-OptiTuneTasks)){
+                try{ $t | Disable-ScheduledTask -EA Stop | Out-Null; $n++; $full = "$($t.TaskPath)|$($t.TaskName)"; if($undo -notcontains $full){ [void]$undo.Add($full) } }catch{}
+            }
+            $st.tasks = @($undo)
+            return @{ok=$true; n=$n; msg="$n désactivée(s)"}
+        }
+        'faststart' {
+            try{ & "$env:WINDIR\System32\powercfg.exe" /hibernate on 2>&1 | Out-Null }catch{}
+            if($LASTEXITCODE -ne 0){ return @{ok=$false; msg='non disponible sur ce PC'} }
+            $n = Set-OptiRegTune 'faststart' $defs.faststart $st
+            return @{ok=($n -gt 0); n=$n; msg=$(if($n){ 'activé' } else { 'non effectué' })}
+        }
+        'power' {
+            $prev = Get-ActivePlanGuid
+            $o = ''; try{ $o = (& "$env:WINDIR\System32\powercfg.exe" -duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 2>&1) -join ' ' }catch{}
+            if($o -notmatch '([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'){ return @{ok=$false; msg='non disponible sur ce PC'} }
+            $g = $matches[1].ToLower()
+            & "$env:WINDIR\System32\powercfg.exe" -setactive $g 2>&1 | Out-Null
+            if((Get-ActivePlanGuid) -ne $g){ & "$env:WINDIR\System32\powercfg.exe" -delete $g 2>&1 | Out-Null; return @{ok=$false; msg='non effectué'} }
+            $old = $prev; if($st.power -and $st.power.prev){ $old = [string]$st.power.prev; if($st.power.created){ & "$env:WINDIR\System32\powercfg.exe" -delete ([string]$st.power.created) 2>&1 | Out-Null } }
+            $st.power = @{ prev=$old; created=$g }
+            return @{ok=$true; n=1; msg='activé'}
+        }
+        default {
+            if($defs.ContainsKey($id)){
+                $n = Set-OptiRegTune $id $defs[$id] $st
+                return @{ok=$true; n=$n; msg=$(if($n){ "$n réglage(s) appliqué(s)" } else { 'déjà fait' })}
+            }
+            return @{ok=$false; msg='inconnu'}
+        }
+    }
+}
+function Invoke-OptiTune($ids){
+    $st = Get-OptiTuneState
+    $res = @{}
+    foreach($id in @($ids)){
+        try{ $res[[string]$id] = Invoke-OptiTuneOne ([string]$id) $st }catch{ $res[[string]$id] = @{ok=$false; msg='non effectué'} }
+        Save-OptiTuneState $st
+    }
+    @{ ok=$true; results=$res }
+}
+
+# Remet un reglage (ou tous) comme avant le passage d'OptiPC.
+function Undo-OptiTune($ids){
+    $st = Get-OptiTuneState
+    $all = @('bgapps','browsers','tasks','faststart','widgets','power','menus','game')
+    if(-not $ids -or -not @($ids).Count){ $ids = $all }
+    $n = 0
+    foreach($id in @($ids)){
+        try{
+            switch([string]$id){
+                'bgapps' {
+                    if($st.bg){
+                        $key = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
+                        if(@($st.bg.list).Count){ Set-ItemProperty -LiteralPath $key -Name 'LetAppsRunInBackground_ForceDenyTheseApps' -Value ([string[]]@($st.bg.list)) -Type MultiString -Force -EA Stop }
+                        else { Remove-ItemProperty -LiteralPath $key -Name 'LetAppsRunInBackground_ForceDenyTheseApps' -Force -EA SilentlyContinue }
+                        if(-not $st.bg.hadMode){ Remove-ItemProperty -LiteralPath $key -Name 'LetAppsRunInBackground' -Force -EA SilentlyContinue }
+                        $st.Remove('bg'); $n++
+                    }
+                }
+                'browsers' {
+                    $keep = New-Object System.Collections.ArrayList
+                    foreach($u in @($st.browsers)){
+                        if(-not $u){ continue }
+                        if(@(Get-Process -Name (([string]$u.exe) -replace '\.exe$','') -EA SilentlyContinue).Count){ [void]$keep.Add($u); continue }
+                        try{
+                            $d = Read-OptiJsonDict $u.file
+                            if($d.ContainsKey('background_mode') -and ($d['background_mode'] -is [System.Collections.IDictionary])){ if($null -eq $u.bg){ [void]$d['background_mode'].Remove('enabled') } else { $d['background_mode']['enabled'] = [bool]$u.bg } }
+                            if($u.id -eq 'edge' -and $d.ContainsKey('startup_boost') -and ($d['startup_boost'] -is [System.Collections.IDictionary])){ if($null -eq $u.sb){ [void]$d['startup_boost'].Remove('enabled') } else { $d['startup_boost']['enabled'] = [bool]$u.sb } }
+                            Write-OptiJsonDict $u.file $d; $n++
+                        }catch{ [void]$keep.Add($u) }
+                    }
+                    if($keep.Count){ $st.browsers = @($keep) } else { $st.Remove('browsers') }
+                }
+                'tasks' {
+                    foreach($full in @($st.tasks)){
+                        $p = ([string]$full).Split('|', 2)
+                        if($p.Count -eq 2){ try{ Enable-ScheduledTask -TaskPath $p[0] -TaskName $p[1] -EA Stop | Out-Null; $n++ }catch{} }
+                    }
+                    $st.Remove('tasks')
+                }
+                'power' {
+                    if($st.power){
+                        if($st.power.prev){ & "$env:WINDIR\System32\powercfg.exe" -setactive ([string]$st.power.prev) 2>&1 | Out-Null }
+                        if($st.power.created){ & "$env:WINDIR\System32\powercfg.exe" -delete ([string]$st.power.created) 2>&1 | Out-Null }
+                        $st.Remove('power'); $n++
+                    }
+                }
+                default { $n += (Undo-OptiRegTune ([string]$id) $st) }
+            }
+        }catch{}
+    }
+    Save-OptiTuneState $st
+    @{ ok=$true; restored=$n }
+}
+
+# Recherche d'erreurs sur le disque C: (sans redemarrer). S'il y en a, Windows les repare au prochain demarrage.
+function Invoke-OptiDiskCheck {
+    try{
+        $r = [string](Repair-Volume -DriveLetter C -Scan -EA Stop)
+        if($r -eq 'NoErrorsFound'){ return @{ok=$true; errors=$false; msg='Aucune erreur trouvée sur le disque C:.'} }
+        try{ & "$env:WINDIR\System32\fsutil.exe" dirty set C: 2>&1 | Out-Null }catch{}
+        return @{ok=$true; errors=$true; msg='Des erreurs ont été trouvées : Windows réparera le disque au prochain redémarrage du PC.'}
+    }catch{ return @{ok=$false; msg='Vérification impossible : ' + $_.Exception.Message} }
+}
