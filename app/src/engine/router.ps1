@@ -169,6 +169,10 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/score/history$"   { $r = Get-OptiScoreHistory; break }
             "^/api/callback$"        { $r = Send-OptiCallbackRequest ([string]$b.prenom) ([string]$b.telephone) ([string]$b.sujet); break }
             "^/api/browsers/hijack$"  { $r = Get-OptiBrowserHijack; break }
+            "^/api/tune$"             { $r = Get-OptiTune; break }
+            "^/api/tune/apply$"       { $r = Invoke-OptiTune @($b.ids); break }
+            "^/api/tune/revert$"      { $r = Undo-OptiTune @($b.ids); break }
+            "^/api/tune/diskcheck$"   { $r = Invoke-OptiDiskCheck; break }
             "^/api/browsers/repair$"  { $r = Repair-OptiBrowserHijack; if($r.ok -and $r.fixed){ Add-OptiGain 'browsers' ([double]$r.fixed) }; break }
             "^/api/boot$"            { $r = Get-OptiBootTime; break }
             "^/api/gains$"           { $r = Get-OptiGains; break }

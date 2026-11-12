@@ -80,11 +80,21 @@ function applyTheme(){
 function setTheme(p){ try{ localStorage.setItem('optipc_theme',p); }catch(e){} applyTheme(); }
 function toggleTheme(){ setTheme(effectiveTheme(getThemePref())==='dark'?'light':'dark'); }
 try{ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(getThemePref()==='auto')applyTheme(); }); }catch(e){}
+/* Taille de l'affichage : le choix du client (Normal / Grand / Très grand) multiplié par un ajustement
+   automatique. Sur un petit écran, ou quand Windows agrandit tout (125 %, 150 %), l'interface est
+   réduite pour tenir entière dans la fenêtre au lieu de déborder en très gros. */
+function fitZoom(){ return Math.max(0.6,Math.min(1,window.innerWidth/1500,window.innerHeight/800)); }
+function applyZoom(){
+  let z=1; try{ z=parseFloat(localStorage.getItem('optipc_zoom'))||1; }catch(e){}
+  document.documentElement.style.zoom=(z*fitZoom()).toFixed(3);
+}
 function setZoom(z){
   try{ localStorage.setItem('optipc_zoom',z); }catch(e){}
-  document.documentElement.style.zoom=z;
+  applyZoom();
   document.querySelectorAll('#set-zoom button').forEach(b=>b.classList.toggle('on',b.dataset.v===String(z)));
 }
+window.addEventListener('resize',applyZoom);
+applyZoom();
 function syncSettingsUI(){
   const pref=getThemePref();
   document.querySelectorAll('#set-theme button').forEach(b=>b.classList.toggle('on',b.dataset.v===pref));
@@ -110,7 +120,7 @@ function showSec(name,el){
   if(name==='apps'){ if(first){ loadApps(); loadStartup(); if(!window._softUpd)loadSoftUpdatesCount(); } else appCounts(); }
   if(name==='health'){ loadHealth(false); loadDiskInfo(); if(first)loadSysInfo(); }
   if(name==='network'){ if(first)loadNetwork(false); }
-  if(name==='tools'){ loadQuarantine(); loadRestorePoints(); loadWinOld(); const adv=$('adv-card'); if(adv&&!adv._hooked){ adv._hooked=true; adv.addEventListener('toggle',()=>{ if(adv.open&&!adv._loaded){ adv._loaded=true; loadRam(); loadPowerPlans(); loadServices(); loadVirtMem(); } }); } }
+  if(name==='tools'){ loadTune(); loadQuarantine(); loadRestorePoints(); loadWinOld(); const adv=$('adv-card'); if(adv&&!adv._hooked){ adv._hooked=true; adv.addEventListener('toggle',()=>{ if(adv.open&&!adv._loaded){ adv._loaded=true; loadRam(); loadPowerPlans(); loadServices(); loadVirtMem(); } }); } }
   if(name==='params'){ renderPlanCompare(); loadScheduleStatus(); loadNotifSetting(); syncSettingsUI(); }
 }
 function goSec(name){ showSec(name,null); }
@@ -218,6 +228,56 @@ const ICO={
 };
 function svgI(k,s){ return '<svg width="'+(s||22)+'" height="'+(s||22)+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICO[k]||'')+'</svg>'; }
 
+/* ── Optimisations de Windows ──────────────────────────────────────── */
+// t = titre, d = explication, step = ligne affichée pendant l'optimisation, manual = à lancer à la demande (page Outils).
+const TUNE={
+  disk:{ico:'disk',t:'Disque à optimiser',step:'Disque optimisé',d:'Défragmentation d’un disque dur classique, ou TRIM sur un SSD : OptiPC reconnaît le type de disque',gain:x=>x.kind==='SSD'?'SSD':x.kind==='HDD'?'Disque dur':'Disque'},
+  bgapps:{ico:'cpu',t:'Applications qui tournent en arrière-plan',step:'Applications en arrière-plan',d:'Météo, Xbox, Actualités, jeux… tournent sans être ouvertes. Courrier, Photos et Alarmes ne sont pas touchés',gain:x=>String(x.todo)},
+  browsers:{ico:'refresh',t:'Navigateurs qui restent en mémoire',step:'Navigateurs fermés pour de bon',d:'Chrome et Edge continuent de tourner une fois fermés, et Edge se précharge au démarrage',gain:x=>String(x.todo)},
+  tasks:{ico:'gauge',t:'Tâches planifiées inutiles',step:'Tâches planifiées inutiles',d:'Collecte de données de Windows et des fabricants, qui se réveille toute la journée. Les mises à jour de sécurité ne sont pas touchées',gain:x=>String(x.todo)},
+  faststart:{ico:'rocket',t:'Démarrage rapide de Windows désactivé',step:'Démarrage rapide de Windows',d:'Windows démarre nettement plus vite quand ce réglage est actif',gain:()=>'Démarrage'},
+  widgets:{ico:'copy',t:'Widgets, Copilot et suggestions',step:'Widgets, Copilot et suggestions',d:'Panneau d’actualités, bouton Copilot, publicités du menu Démarrer et « conseils » de Windows',gain:x=>String(x.todo)},
+  power:{ico:'zap',t:'Mode Performances ultimes',step:'Mode Performances ultimes',d:'Mode d’alimentation caché de Windows, réservé aux PC fixes : le PC donne tout, consomme un peu plus',gain:()=>'PC fixe'},
+  menus:{ico:'zap',t:'Menus plus réactifs',step:'Menus plus réactifs',d:'Supprime le délai d’ouverture des menus et la transparence',gain:x=>String(x.todo)},
+  game:{ico:'zap',t:'Mode Jeu et accélération graphique',step:'Mode Jeu',d:'Donne la priorité au jeu en cours. Pour les PC équipés d’une carte graphique',manual:true}
+};
+async function loadTune(){
+  const el=$('tune-list'); if(!el)return;
+  let d; try{ d=await API.get('/api/tune',120000); }catch(e){ el.innerHTML='<div class="empty-note">Lecture des réglages impossible.</div>'; return; }
+  window._tune=d;
+  const row=x=>{ const m=TUNE[x.id]; if(!m)return '';
+    const done=x.todo<=0, na=x.id==='power'&&x.desktop===false;
+    const st=na?'<span class="lvl warn">PC portable</span>':done?'<span class="lvl ok">Optimisé</span>':'<span class="lvl warn">À optimiser</span>';
+    const btn=na?'':done?(x.applied?'<button class="btn-su btn-ghost" onclick="tuneRevert(\''+x.id+'\')">Remettre comme avant</button>':''):'<button class="btn-su btn-soft" onclick="ifPro(()=>tuneApply(\''+x.id+'\'),\'Les optimisations de Windows sont réservées à la version Premium.\')">Optimiser'+(_isPro?'':' · Premium')+'</button>';
+    return '<div class="setting-row"><div style="min-width:0"><div class="t">'+esc(m.step)+' '+st+'</div><div class="d">'+esc(m.d)+' · '+esc(x.detail||'')+'</div></div><div class="row" style="flex-shrink:0">'+btn+'</div></div>'; };
+  el.innerHTML=(d.items||[]).map(row).join('');
+}
+async function tuneApply(id){
+  loading(true,'Optimisation en cours…');
+  try{ const r=await API.post('/api/tune/apply',{ids:[id]},300000); const o=(r.results||{})[id]||{}; toast(TUNE[id].step+' : '+(o.msg||'non effectué'),o.ok?'ok':'err'); }catch(e){ toast('Optimisation impossible','err'); }
+  loading(false); loadTune();
+}
+async function tuneApplyAll(){
+  const ids=((window._tune||{}).items||[]).filter(x=>x.todo>0&&TUNE[x.id]&&!TUNE[x.id].manual&&x.id!=='power').map(x=>x.id);
+  if(!ids.length){ toast('Tout est déjà optimisé','ok'); return; }
+  loading(true,'Optimisation de Windows…');
+  try{ const r=await API.post('/api/tune/apply',{ids},600000); const n=ids.filter(i=>((r.results||{})[i]||{}).ok).length; showSuccess(n+' réglage'+(n>1?'s':'')+' optimisé'+(n>1?'s':''),'Chaque réglage peut être remis comme avant'); }catch(e){ toast('Optimisation impossible','err'); }
+  loading(false); loadTune();
+}
+async function tuneRevert(id){
+  const one=id?TUNE[id].step:null;
+  confirm2('Remettre comme avant',one?('Annuler « '+one+' » et retrouver le réglage d’origine ?'):'Annuler toutes les optimisations de Windows faites par OptiPC et retrouver les réglages d’origine ?',async()=>{
+    loading(true,'Restauration des réglages…');
+    try{ const r=await API.post('/api/tune/revert',{ids:id?[id]:[]},300000); toast((r.restored||0)+' réglage(s) remis comme avant','ok'); }catch(e){ toast('Restauration impossible','err'); }
+    loading(false); loadTune();
+  });
+}
+async function tuneDiskCheck(){
+  loading(true,'Vérification du disque (quelques minutes)…');
+  try{ const r=await API.post('/api/tune/diskcheck',{},1800000); if(r.ok&&!r.errors)showSuccess('Disque en bon état',r.msg); else toast(r.msg||'Vérification impossible',r.ok?'ok':'err'); }catch(e){ toast('Vérification impossible','err'); }
+  loading(false);
+}
+
 // Programmes qu'on peut retirer du démarrage sans risque (le programme reste installé).
 const USELESS_START=/spotify|discord|steam|epic ?games|epicgameslauncher|origin|uplay|ubisoft|battle\.net|opera|edgeautolaunch|microsoftedgeautolaunch|teams|skype|zoom|ccleaner|itunes|utorrent|bittorrent|qbittorrent|cortana|creative ?cloud|ccxprocess|lghub|wallpaper|messenger|whatsapp|telegram|slack|viber|amazon ?music|deezer|evernote|grammarly|clipchamp|yourphone|phonelink/i;
 const KEEP_START=/securityhealth|defender|antivirus|avast|avg|norton|kaspersky|bitdefender|eset|mcafee|malwarebytes|realtek|rtk|nvidia|amd|radeon|intel|synaptics|elan|etd|touchpad|audio|bluetooth|onedrive|dropbox|google ?drive|icloud|optipc|secureetech|anydesk|teamviewer|vigilance|vpn/i;
@@ -257,7 +317,7 @@ async function doCare(){
   try{ const d=await API.get('/api/analyze',180000); _cleanItems=d.items||[]; window._lastScanData=d; renderQuickClean(); loadScoreHistory(); }catch(e){}
 }
 
-const SCAN_STEPS=[['web','Navigateurs détournés'],['junk','Fichiers inutiles'],['space','Doublons, dossiers et fichiers vides'],['start','Programmes au démarrage'],['sec','Protection et antivirus'],['health','Santé des disques'],['upd','Logiciels à mettre à jour'],['ram','Mémoire vive']];
+const SCAN_STEPS=[['web','Navigateurs détournés'],['junk','Fichiers inutiles'],['space','Doublons, dossiers et fichiers vides'],['start','Programmes au démarrage'],['sec','Protection et antivirus'],['health','Santé des disques'],['upd','Logiciels à mettre à jour'],['ram','Mémoire vive'],['tune','Réglages de Windows']];
 function stepsHtml(list,prefix){ return list.map(s=>'<div class="step" id="'+prefix+s[0]+'"><span class="sd"></span><span>'+esc(s[1])+'</span><span class="f"></span></div>').join(''); }
 function stepSet(prefix,k,state,found){
   const el=$(prefix+k); if(!el)return;
@@ -292,6 +352,7 @@ async function startHomeScan(){
     run('health',API.post('/api/health',{force:false},120000),d=>{ const w=((d||{}).disks||{}).worst; return w==='crit'?'alerte':w==='warn'?'à surveiller':'OK'; }),
     run('upd',API.post('/api/softupdates',{force:false},180000),d=>d&&d.available?(d.count?d.count+' à mettre à jour':'à jour'):'—'),
     run('ram',API.get('/api/ram',30000),d=>(d.pct||d.usedPct||0)+' %'),
+    run('tune',API.get('/api/tune',120000),d=>{ window._tune=d; return d.count?d.count+' à optimiser':'OK'; }),
     run('web',API.get('/api/browsers/hijack',90000),d=>{ renderBrowserHijack(d); return d.count?d.count+' détournement'+(d.count>1?'s':''):'OK'; })
   ]);
   clearInterval(timer);
@@ -361,6 +422,12 @@ function buildIssues(){
   if(R.web&&R.web.count){ const c=(R.web.items||[]).filter(x=>x.level==='crit'); L.push({id:'web',ico:'alert',cls:'bad',t:'Navigateur détourné ('+[...new Set(c.map(x=>x.browser))].slice(0,3).join(', ')+')',d:[...new Set(c.map(x=>x.detail).filter(Boolean))].slice(0,3).join(', ')+' : page de démarrage ou recherche imposée. Les navigateurs seront fermés quelques secondes.',bytes:0,gain:String(c.length),sev:_isPro?'Important':'Premium',act:_isPro,on:_isPro,prem:!_isPro}); }
   if(R.upd&&R.upd.available&&R.upd.count)L.push({id:'upd',ico:'refresh',cls:'acc',t:R.upd.count+' logiciel'+(R.upd.count>1?'s':'')+' à mettre à jour',d:(R.upd.items||[]).slice(0,3).map(x=>x.name).join(', ')+' : les anciennes versions sont la porte d’entrée des virus',bytes:0,gain:String(R.upd.count),sev:'Premium',prem:!_isPro,link:'upd'});
   if(R.health){ const dk=R.health.disks||{}; if(dk.worst==='crit'||dk.worst==='warn'){ const bad=(dk.disks||[]).find(x=>x.level!=='ok')||{}; L.push({id:'disk',ico:'health',cls:dk.worst==='crit'?'bad':'warn',t:(dk.worst==='crit'?'Disque en danger : ':'Disque à surveiller : ')+(bad.name||''),d:((bad.reasons||[]).join(' · ')||'Usure ou température élevée')+'. Pensez à sauvegarder vos fichiers.',bytes:0,gain:(bad.pct!=null?bad.pct+' %':'!'),sev:'Conseil',link:'health'}); } }
+  if(R.tune){
+    (R.tune.items||[]).filter(x=>x.todo>0&&TUNE[x.id]&&!TUNE[x.id].manual).forEach(x=>{
+      const m=TUNE[x.id];
+      L.push({id:'tune_'+x.id,tune:x.id,ico:m.ico,cls:'blue',t:m.t,d:m.d,bytes:0,gain:m.gain?m.gain(x):'',sev:_isPro?'Sans risque':'Premium',prem:!_isPro,act:_isPro,on:_isPro&&x.id!=='power'});
+    });
+  }
   _issues=L;
 }
 function renderIssues(){
@@ -385,7 +452,7 @@ function updateGains(){
   const R=_scanR||{}, score=(R.junk&&R.junk.score)||60;
   const st=sel.find(x=>x.id==='start'), sc=sel.find(x=>x.id==='sec'), sp=sel.filter(x=>x.space);
   const files=sp.reduce((s,x)=>s+x.space.length,0);
-  let est=score+3+Math.min(12,Math.round(bytes/1073741824*3))+(st?Math.min(10,st.startItems.length*2):0)+(sc?sc.fixes.length*4:0)+(sel.find(x=>x.id==='ram')?2:0)+(sel.find(x=>x.id==='av')?3:0);
+  let est=score+3+Math.min(12,Math.round(bytes/1073741824*3))+(st?Math.min(10,st.startItems.length*2):0)+(sc?sc.fixes.length*4:0)+(sel.find(x=>x.id==='ram')?2:0)+(sel.find(x=>x.id==='av')?3:0)+Math.min(6,sel.filter(x=>x.tune).length);
   est=Math.max(score,Math.min(95,est));
   const c=(_drives||[]).find(x=>x.letter==='C:')||(_drives||[])[0];
   const G=[];
@@ -395,6 +462,8 @@ function updateGains(){
   if(files)G.push(['folder',files+' élément'+(files>1?'s':''),'doublons et vides rangés à la Corbeille']);
   if(sc)G.push(['shield','Protection max','réglages de sécurité réactivés']);
   if(sel.find(x=>x.id==='ram'))G.push(['cpu','Mémoire libérée','PC plus réactif']);
+  const tn=sel.filter(x=>x.tune).length;
+  if(tn)G.push(['gauge',tn+' réglage'+(tn>1?'s':'')+' de Windows','optimisé'+(tn>1?'s':'')+' : PC plus léger au quotidien']);
   if(c&&c.totalBytes&&bytes>0){ const after=Math.max(0,Math.round((c.totalBytes-c.freeBytes-bytes)/c.totalBytes*100)); G.push(['disk',c.pct+' % → '+after+' %','disque C: occupé']); }
   const gl=$('done-gains'); if(gl)gl.innerHTML=G.slice(0,6).map((x,i)=>'<div class="gain" style="animation-delay:'+(i*0.07)+'s"><span class="gi">'+svgI(x[0],20)+'</span><div><b>'+esc(x[1])+'</b><span>'+esc(x[2])+'</span></div></div>').join('');
   const b=$('btn-boost'); if(b)b.disabled=!sel.length;
@@ -410,6 +479,7 @@ async function startOptimize(){
   if(sel.some(x=>x.space))S.push(['space','Doublons, dossiers et fichiers vides']);
   if(has('start'))S.push(['start','Démarrage allégé']);
   if(has('ram'))S.push(['ram','Mémoire vive']);
+  sel.filter(x=>x.tune).forEach(x=>S.push(['t_'+x.tune,TUNE[x.tune].step]));
   if(has('web'))S.push(['web','Navigateurs remis en état']);
   if(has('sec'))S.push(['sec','Protections de Windows']);
   if(has('av'))S.push(['av','Mise à jour de l’antivirus']);
@@ -418,13 +488,14 @@ async function startOptimize(){
   const before=((_scanR||{}).junk||{}).score||60;
   let doneN=0; const tick=()=>{ doneN++; const p=Math.round(doneN/S.length*100); $('opt-bar').style.width=p+'%'; $('orb-pct').textContent=p+'\u202F%'; };
   $('orb-pct').textContent='0 %'; $('orb-scan-lbl').textContent='OPTIMISATION'; $('opt-bar').style.width='0%';
-  const K={freed:0,files:0,start:0,sec:0,limited:0,recycled:0,junkLim:0};
+  const K={freed:0,files:0,start:0,sec:0,limited:0,recycled:0,junkLim:0,tune:0};
   const step=async(k,fn)=>{ stepSet('os-',k,'run'); try{ const f=await fn(); stepSet('os-',k,'done',f||''); }catch(e){ stepSet('os-',k,'err','non effectué'); } tick(); };
   await step('rp',async()=>{ const r=await API.post('/api/restorepoint',{desc:'OptiPC - avant optimisation'},300000); return r&&r.ok?(r.created?'créé':'déjà récent'):'impossible'; });
   if(has('junk'))await step('junk',async()=>{ const ids=((_scanR.junk||{}).items||[]).filter(i=>i.size>0&&((i.cat==='Windows'&&i.id!=='recent')||i.cat==='Navigateurs'||(_isPro&&i.cat==='Avance'&&i.id!=='winold'&&i.id!=='prefetch'))).map(i=>i.id); if(!ids.length)return 'déjà propre'; const r=await API.post('/api/clean',{selected:ids},600000); K.freed+=Number(r.cleanedBytes||0); K.junkLim=Number(r.limitedBytes||0); return String(r.cleaned||'').replace(' GB',' Go').replace(' MB',' Mo')+' libérés'; });
   if(sel.some(x=>x.space))await step('space',async()=>{ const paths=[].concat(...sel.filter(x=>x.space).map(x=>x.space)); const r=await API.post('/api/space/remove',{paths},900000); K.recycled+=Number(r.freed||0); K.files+=Number(r.count||r.done||0); K.limited=Number(r.limited||0); return (r.count||r.done||0)+' à la Corbeille'; });
   if(has('start'))await step('start',async()=>{ let n=0; for(const it of has('start').startItems){ try{ const r=await API.post('/api/startup/toggle',{name:it.name,regPath:it.regPath,enable:false},30000); if(r&&r.ok)n++; }catch(e){} } K.start=n; return n+' retiré'+(n>1?'s':''); });
   if(has('ram'))await step('ram',async()=>{ await API.post('/api/ram/optimize',{},60000); return 'libérée'; });
+  for(const x of sel.filter(x=>x.tune))await step('t_'+x.tune,async()=>{ const r=await API.post('/api/tune/apply',{ids:[x.tune]},300000); const o=(r.results||{})[x.tune]||{}; if(o.ok)K.tune++; return o.msg||'non effectué'; });
   if(has('web'))await step('web',async()=>{ const r=await API.post('/api/browsers/repair',{},180000); return r.msg||''; });
   if(has('sec'))await step('sec',async()=>{ let n=0; for(const f of has('sec').fixes){ try{ const r=await API.post('/api/security/fix',{action:f},180000); if(r&&(r.ok||r.success))n++; }catch(e){} } K.sec=n; return n+' corrigé'+(n>1?'s':''); });
   if(has('av'))await step('av',async()=>{ const r=await API.post('/api/security/fix',{action:'update_defender'},300000); return r&&r.ok?'à jour':'non disponible'; });
@@ -439,6 +510,7 @@ async function startOptimize(){
     +'<div class="kpi"><b class="g">+'+Math.max(0,after-before)+'</b><span>points de score ('+after+'/100)</span></div>'
     +(K.start?'<div class="kpi"><b>'+K.start+'</b><span>programme'+(K.start>1?'s':'')+' retiré'+(K.start>1?'s':'')+' du démarrage</span></div>':'')
     +(K.files?'<div class="kpi"><b>'+K.files+'</b><span>doublons et éléments vides rangés</span></div>':'')
+    +(K.tune?'<div class="kpi"><b>'+K.tune+'</b><span>réglage'+(K.tune>1?'s':'')+' de Windows optimisé'+(K.tune>1?'s':'')+'</span></div>':'')
     +(has('sec')||has('av')?'<div class="kpi"><b class="g">100 %</b><span>protection active</span></div>':'');
   let note='';
   if(K.recycled>0||K.files>0){ note+='Les doublons et éléments vides sont dans la Corbeille : vous pouvez encore les récupérer. Videz-la pour libérer réellement la place. '; const fr=$('fix-recycle'); if(fr)fr.style.display=''; }

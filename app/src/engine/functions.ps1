@@ -1,9 +1,9 @@
 function Format-Size($b) {
-    if(-not $b -or $b -le 0){return "0 B"}
-    if($b -ge 1GB){return "{0:N1} GB" -f ($b/1GB)}
-    if($b -ge 1MB){return "{0:N0} MB" -f ($b/1MB)}
-    if($b -ge 1KB){return "{0:N0} KB" -f ($b/1KB)}
-    "$b B"
+    if(-not $b -or $b -le 0){return "0 o"}
+    if($b -ge 1GB){return "{0:N1} Go" -f ($b/1GB)}
+    if($b -ge 1MB){return "{0:N0} Mo" -f ($b/1MB)}
+    if($b -ge 1KB){return "{0:N0} Ko" -f ($b/1KB)}
+    "$b o"
 }
 function Get-FolderSize($path) {
     try {
@@ -443,20 +443,51 @@ function ConvertTo-OptiNativeRegPath($k){
     $x = $x -replace '^(?i)HKLM:\\?','HKEY_LOCAL_MACHINE\' -replace '^(?i)HKCU:\\?','HKEY_CURRENT_USER\'
     $x.TrimEnd('\')
 }
+# -- Registre --
+# L'analyse ne signale que des references vers des fichiers qui n'existent plus.
+# Chaque element porte un identifiant : "K|<cle>" (cle entiere) ou "V|<cle>|<valeur>".
+function Test-OptiRegMissing([string]$path){
+    # Vrai seulement si le fichier est absent d'un disque local bien present
+    # (jamais pour un chemin reseau, une variable non resolue ou un lecteur debranche).
+    $p = [Environment]::ExpandEnvironmentVariables(([string]$path).Trim().Trim('"'))
+    if(-not $p -or $p.Contains('%')){ return $false }
+    if($p -notmatch '^[A-Za-z]:\\'){ return $false }
+    try{
+        if(-not [IO.Directory]::Exists($p.Substring(0,3))){ return $false }
+        return -not ([IO.File]::Exists($p) -or [IO.Directory]::Exists($p))
+    }catch{ return $false }
+}
+function Open-OptiRegKey([string]$native, [bool]$writable){
+    $i = $native.IndexOf('\'); if($i -lt 0){ return $null }
+    $hive = $native.Substring(0,$i); $sub = $native.Substring($i+1)
+    $root = if($hive -ieq 'HKEY_LOCAL_MACHINE'){ [Microsoft.Win32.Registry]::LocalMachine } elseif($hive -ieq 'HKEY_CURRENT_USER'){ [Microsoft.Win32.Registry]::CurrentUser } else { $null }
+    if(-not $root){ return $null }
+    try{ return $root.OpenSubKey($sub, $writable) }catch{ return $null }
+}
+function Get-OptiRegValueKeys {
+    # Cles dont OptiPC peut supprimer des VALEURS (jamais la cle elle-meme).
+    @{
+        run      = @('HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+                     'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+                     'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run')
+        shared   = @('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\SharedDLLs',
+                     'HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\SharedDLLs')
+        cache    = @('HKEY_CURRENT_USER\SOFTWARE\Classes\Local Settings\Software\Microsoft\Windows\Shell\MuiCache')
+        firewall = @('HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\FirewallRules')
+        fonts    = @('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts',
+                     'HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts',
+                     'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Help')
+    }
+}
 function Scan-Registry {
-    # Ne signale QUE les logiciels fantomes : nom affiche present, mais
-    # desinstalleur ET dossier d'installation disparus du disque.
-    # Les cles sans nom (anciennement "(entree vide) / Nom manquant") sont des
-    # entrees techniques normales de Windows : elles ne sont plus signalees.
-    $paths = @(
-        "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
-        "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
-        "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
-    )
-    $skipExe = '(?i)\\(msiexec|rundll32|cmd|powershell|pwsh|wscript|cscript|explorer|regsvr32|dllhost)\.exe$'
-    $invalid = [System.Collections.ArrayList]::new()
+    $items = [System.Collections.ArrayList]::new()
     $scanned = 0
-    foreach($p in $paths){
+    $skipExe = '(?i)\\(msiexec|rundll32|cmd|powershell|pwsh|wscript|cscript|explorer|regsvr32|dllhost)\.exe$'
+
+    # 1. Logiciels fantomes : nom affiche present, mais desinstalleur ET dossier disparus.
+    foreach($p in @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                    "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+                    "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall")){
         if(-not(Test-Path $p -EA SilentlyContinue)){ continue }
         foreach($key in @(Get-ChildItem $p -EA SilentlyContinue)){
             $scanned++
@@ -469,40 +500,107 @@ function Scan-Registry {
                 if($n -match '^(KB\d+|Update for|Security Update|Hotfix|Mise a jour)'){ continue }
                 $cmd = [string]$pr.UninstallString
                 if(-not $cmd){ $cmd = [string]$pr.QuietUninstallString }
-                if(-not $cmd){ continue }
-                if($cmd -match '(?i)msiexec'){ continue }
+                if(-not $cmd -or $cmd -match '(?i)msiexec'){ continue }
                 $exe = Get-OptiExeFromCommand $cmd
-                if(-not $exe){ continue }
-                try{ if(-not [IO.Path]::IsPathRooted($exe)){ continue } }catch{ continue }
-                if($exe -match $skipExe -or $exe -match '(?i)\\WindowsApps\\'){ continue }
-                if(Test-Path -LiteralPath $exe -EA SilentlyContinue){ continue }
+                if(-not $exe -or $exe -match $skipExe -or $exe -match '(?i)\\WindowsApps\\'){ continue }
+                if(-not (Test-OptiRegMissing $exe)){ continue }
                 $loc = ([string]$pr.InstallLocation).Trim().Trim('"')
-                if($loc -and (Test-Path -LiteralPath $loc -EA SilentlyContinue)){ continue }
-                [void]$invalid.Add(@{key=[string]$key.PSPath;name=$n;issue="Logiciel absent";detail="Desinstalleur introuvable : $exe"})
+                if($loc -and -not (Test-OptiRegMissing $loc)){ continue }
+                [void]$items.Add(@{key=('K|' + (ConvertTo-OptiNativeRegPath $key.PSPath));cat='apps';name=$n;detail=$exe})
             } catch { continue }
         }
     }
-    @{count=$invalid.Count;items=@($invalid);scanned=$scanned}
+
+    # 2. Chemins d'applications (App Paths) et 3. applications Ouvrir avec disparues.
+    foreach($def in @(
+        @{cat='paths'; root='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths'; sub=''},
+        @{cat='paths'; root='HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\App Paths'; sub=''},
+        @{cat='paths'; root='HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths'; sub=''},
+        @{cat='open';  root='HKCU:\SOFTWARE\Classes\Applications'; sub='shell\open\command'})){
+        if(-not(Test-Path $def.root -EA SilentlyContinue)){ continue }
+        foreach($key in @(Get-ChildItem $def.root -EA SilentlyContinue)){
+            $scanned++
+            try{
+                $nat = ConvertTo-OptiNativeRegPath $key.PSPath
+                $k = Open-OptiRegKey ($(if($def.sub){ "$nat\$($def.sub)" } else { $nat })) $false
+                if(-not $k){ continue }
+                $val = [string]$k.GetValue('', $null); $k.Close()
+                if(-not $val){ continue }
+                $exe = if($def.sub){ Get-OptiExeFromCommand $val } else { $val }
+                if(-not $exe -or $exe -match $skipExe){ continue }
+                if(Test-OptiRegMissing $exe){ [void]$items.Add(@{key="K|$nat";cat=$def.cat;name=$key.PSChildName;detail=$exe}) }
+            } catch { continue }
+        }
+    }
+
+    # 4 a 8. Valeurs qui pointent vers un fichier absent.
+    $vk = Get-OptiRegValueKeys
+    $winFonts = Join-Path $env:WINDIR 'Fonts'
+    foreach($cat in $vk.Keys){
+        foreach($nat in $vk[$cat]){
+            $k = Open-OptiRegKey $nat $false
+            if(-not $k){ continue }
+            try{
+                foreach($name in @($k.GetValueNames())){
+                    $scanned++
+                    if(-not $name){ continue }
+                    $data = [string]$k.GetValue($name, '')
+                    $file = $null
+                    switch($cat){
+                        'run'      { $file = Get-OptiExeFromCommand $data; if($file -match $skipExe){ $file = $null } }
+                        'shared'   { $file = $name }
+                        'cache'    { if($name -match '^(?i)([A-Za-z]:\\.+?\.exe)\.'){ $file = $matches[1] } }
+                        'firewall' { if($data -match '(?i)\|App=([^|]+)\|'){ $file = $matches[1]; if($file -match '(?i)^(System|%SystemRoot%\\system32\\svchost\.exe)$'){ $file = $null } } }
+                        'fonts'    {
+                            if($nat -like '*\Help'){ if($data){ $file = Join-Path $data $name } }
+                            elseif($data){ $file = if($data -match '^[A-Za-z]:\\'){ $data } else { Join-Path $winFonts $data } }
+                        }
+                    }
+                    if($file -and (Test-OptiRegMissing $file)){
+                        [void]$items.Add(@{key="V|$nat|$name";cat=$cat;name=$(if($cat -eq 'shared' -or $cat -eq 'cache'){ [IO.Path]::GetFileName($file) } elseif($cat -eq 'firewall'){ [IO.Path]::GetFileName($file) } else { $name });detail=$file})
+                    }
+                }
+            } catch {} finally { $k.Close() }
+        }
+    }
+    @{count=$items.Count;items=@($items);scanned=$scanned}
 }
 function Clean-RegistryKeys($keys){
-    $allowed = '^(?i)HKEY_(LOCAL_MACHINE|CURRENT_USER)\\SOFTWARE\\(WOW6432Node\\)?Microsoft\\Windows\\CurrentVersion\\Uninstall\\[^\\]+$'
+    # Securite : seules ces cles (et les valeurs des cles de Get-OptiRegValueKeys) peuvent etre supprimees.
+    $allowedKey = '^(?i)(HKEY_(LOCAL_MACHINE|CURRENT_USER)\\SOFTWARE\\(WOW6432Node\\)?Microsoft\\Windows\\CurrentVersion\\(Uninstall|App Paths)\\[^\\]+|HKEY_CURRENT_USER\\SOFTWARE\\Classes\\Applications\\[^\\]+)$'
+    $valueKeys = @((Get-OptiRegValueKeys).Values | ForEach-Object { $_ })
     $bdir = "$env:LOCALAPPDATA\OptiPC\RegBackup"
     try{ if(-not(Test-Path $bdir)){ [System.IO.Directory]::CreateDirectory($bdir) | Out-Null } }catch{}
     $stamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $ok = 0; $failed = 0; $i = 0
-    foreach($k in @($keys)){
-        $nat = ConvertTo-OptiNativeRegPath $k
-        # Securite : on ne supprime jamais rien en dehors des cles "Uninstall"
-        if($nat -notmatch $allowed){ $failed++; continue }
+    $saved = @{}   # cle -> sauvegarde reussie (une seule exportation par cle)
+    foreach($id in @($keys)){
+        $parts = ([string]$id).Split('|', 3)
+        $nat = if($parts.Count -ge 2){ $parts[1] } else { ConvertTo-OptiNativeRegPath $id }
+        $isValue = ($parts[0] -eq 'V' -and $parts.Count -eq 3)
+        if($isValue){ if($valueKeys -notcontains $nat){ $failed++; continue } }
+        elseif($nat -notmatch $allowedKey){ $failed++; continue }
         $psp = "Registry::$nat"
         if(-not(Test-Path -LiteralPath $psp)){ $ok++; continue }
-        $i++
-        $bf = Join-Path $bdir ("{0}_{1:D3}.reg" -f $stamp, $i)
-        $saved = $false
-        try{ reg.exe export "$nat" "$bf" /y 2>&1 | Out-Null; $saved = (Test-Path -LiteralPath $bf) }catch{}
-        if(-not $saved){ $failed++; continue }   # pas de sauvegarde = pas de suppression
-        try{ Remove-Item -LiteralPath $psp -Recurse -Force -EA Stop }catch{}
-        if(Test-Path -LiteralPath $psp){ $failed++ } else { $ok++ }
+        if(-not $saved.ContainsKey($nat)){
+            $i++
+            $bf = Join-Path $bdir ("{0}_{1:D3}.reg" -f $stamp, $i)
+            $done = $false
+            try{ reg.exe export "$nat" "$bf" /y 2>&1 | Out-Null; $done = (Test-Path -LiteralPath $bf) }catch{}
+            $saved[$nat] = $done
+        }
+        if(-not $saved[$nat]){ $failed++; continue }   # pas de sauvegarde = pas de suppression
+        if($isValue){
+            $k = Open-OptiRegKey $nat $true
+            if(-not $k){ $failed++; continue }
+            try{ $k.DeleteValue($parts[2], $false) }catch{}
+            $still = $false; try{ $still = @($k.GetValueNames()) -contains $parts[2] }catch{}
+            $k.Close()
+            if($still){ $failed++ } else { $ok++ }
+        } else {
+            try{ Remove-Item -LiteralPath $psp -Recurse -Force -EA Stop }catch{}
+            if(Test-Path -LiteralPath $psp){ $failed++ } else { $ok++ }
+        }
     }
     @{cleaned=$ok;failed=$failed;success=($failed -eq 0);backupDir=$bdir}
 }

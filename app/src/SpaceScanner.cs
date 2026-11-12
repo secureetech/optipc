@@ -43,11 +43,11 @@ namespace OptiPC
 
         public static string FormatSize(long b)
         {
-            if (b <= 0) return "0 B";
-            if (b >= 1073741824L) return string.Format(CultureInfo.CurrentCulture, "{0:N1} GB", b / 1073741824.0);
-            if (b >= 1048576L) return string.Format(CultureInfo.CurrentCulture, "{0:N0} MB", b / 1048576.0);
-            if (b >= 1024L) return string.Format(CultureInfo.CurrentCulture, "{0:N0} KB", b / 1024.0);
-            return b + " B";
+            if (b <= 0) return "0 o";
+            if (b >= 1073741824L) return string.Format(CultureInfo.CurrentCulture, "{0:N1} Go", b / 1073741824.0);
+            if (b >= 1048576L) return string.Format(CultureInfo.CurrentCulture, "{0:N0} Mo", b / 1048576.0);
+            if (b >= 1024L) return string.Format(CultureInfo.CurrentCulture, "{0:N0} Ko", b / 1024.0);
+            return b + " o";
         }
 
         static readonly HashSet<string> SkipDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "$RECYCLE.BIN", "System Volume Information", "node_modules", ".git", "AppData" };

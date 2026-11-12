@@ -5,7 +5,7 @@
 <title>OptiPC</title>
 <link rel="icon" href="logo.png">
 <link rel="stylesheet" href="app.css">
-<script>try{var t=localStorage.getItem('optipc_theme')||'light';if(t==='auto'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);var z=localStorage.getItem('optipc_zoom');if(z){document.documentElement.style.zoom=z;}}catch(e){}</script>
+<script>try{var t=localStorage.getItem('optipc_theme')||'light';if(t==='auto'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.setAttribute('data-theme',t);var z=parseFloat(localStorage.getItem('optipc_zoom'))||1;document.documentElement.style.zoom=z*Math.max(0.6,Math.min(1,innerWidth/1500,innerHeight/800));}catch(e){}</script>
 </head>
 <body>
 
@@ -389,6 +389,12 @@
     <div id="force-del-log" style="display:none"></div>
   </div>
 
+  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Optimisation de Windows</div><div class="row"><button class="btn-su btn-ghost" onclick="tuneRevert()">Tout remettre comme avant</button><button class="btn-su btn-primary" onclick="ifPro(tuneApplyAll,'Les optimisations de Windows sont réservées à la version Premium.')">Tout optimiser</button></div></div>
+    <div class="card-sub">Ces réglages sont aussi appliqués par le bouton « Analyser » de l'accueil. Chacun peut être remis comme avant.</div>
+    <div id="tune-list"><div class="empty-note">Lecture des réglages…</div></div>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn-su btn-ghost" onclick="tuneDiskCheck()">Vérifier le disque</button><span style="font-size:12.5px;color:var(--muted)">Recherche les erreurs du disque C:. S'il y en a, Windows les répare au prochain redémarrage.</span></div>
+  </div>
+
   <div class="card"><div class="card-title">Réparations de Windows</div>
     <div class="tool-grid">
       <button class="tool-btn" onclick="doRepair('sfc',this)"><svg viewBox="0 0 24 24" fill="none" stroke="var(--acc-text)" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg><div><div class="prot2-rbtn-title">Réparer les fichiers Windows</div><div class="prot2-rbtn-sub">Analyse et répare les fichiers système abîmés (SFC)</div></div></button>
@@ -418,7 +424,7 @@
     <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Points de restauration</div><div class="row"><button class="btn-su btn-ghost" onclick="openRestore()">Revenir en arrière…</button><button class="btn-su btn-primary" onclick="createRestorePoint()">Créer</button></div></div><div class="card-sub">Une photo de Windows à laquelle on peut revenir si un réglage pose problème.</div><div id="rp-list"></div></div>
     <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Coffre de quarantaine</div><div class="row"><button class="btn-su btn-ghost" onclick="loadQuarantine()">↻</button><button class="btn-su btn-ghost" onclick="clearWhitelist()">Vider les exceptions</button></div></div><div class="card-sub">Fichiers isolés par l'analyse. Ils peuvent être restaurés à tout moment en cas de fausse alerte.</div><div id="quar-list" style="max-height:260px;overflow-y:auto"></div></div>
   </div>
-  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Registre Windows</div><div class="row"><button class="btn-su btn-ghost" onclick="doRegScan()">Analyser</button><button class="btn-su btn-red" id="btn-clean-reg" onclick="ifPro(doRegClean,'Le nettoyage du registre est réservé à la version Premium.')" disabled>Nettoyer · Premium</button></div></div><div class="card-sub">Entrées laissées par des logiciels désinstallés. Une sauvegarde est créée avant tout nettoyage.</div><div id="reg-result" style="max-height:260px;overflow-y:auto;font-size:13px;color:var(--dim)">Cliquez sur Analyser.</div></div>
+  <div class="card"><div class="flex-b mb8"><div class="card-title" style="margin:0">Registre Windows</div><div class="row"><button class="btn-su btn-ghost" onclick="doRegScan()">Analyser</button><button class="btn-su btn-red" id="btn-clean-reg" onclick="ifPro(doRegClean,'Le nettoyage du registre est réservé à la version Premium.')" disabled>Nettoyer · Premium</button></div></div><div class="card-sub">Traces laissées par des logiciels désinstallés : programmes fantômes, démarrage, fichiers partagés, pare-feu, polices… Seules les entrées qui pointent vers un fichier disparu sont proposées, et une sauvegarde est créée avant tout nettoyage.</div><div id="reg-result" style="max-height:260px;overflow-y:auto;font-size:13px;color:var(--dim)">Cliquez sur Analyser.</div></div>
 </div></section>
 
 <!-- ══ PARAMÈTRES ═════════════════════════════════════════════════════════ -->
@@ -427,7 +433,7 @@
   <div class="grid2">
     <div class="card">
       <div class="card-title">Apparence</div>
-      <div class="setting-row"><div><div class="t">Thème</div><div class="d">Sombre par défaut</div></div><div class="seg" id="set-theme"><button data-v="light" onclick="setTheme('light')">Clair</button><button data-v="dark" onclick="setTheme('dark')">Sombre</button><button data-v="auto" onclick="setTheme('auto')">Comme Windows</button></div></div>
+      <div class="setting-row"><div><div class="t">Thème</div><div class="d">Clair par défaut</div></div><div class="seg" id="set-theme"><button data-v="light" onclick="setTheme('light')">Clair</button><button data-v="dark" onclick="setTheme('dark')">Sombre</button><button data-v="auto" onclick="setTheme('auto')">Comme Windows</button></div></div>
       <div class="setting-row"><div><div class="t">Taille du texte</div><div class="d">Agrandit tout le logiciel</div></div><div class="seg" id="set-zoom"><button data-v="1" onclick="setZoom('1')">Normal</button><button data-v="1.12" onclick="setZoom('1.12')">Grand</button><button data-v="1.25" onclick="setZoom('1.25')">Très grand</button></div></div>
       <div class="setting-row"><div><div class="t">Sons de l'interface</div><div class="d">Petit son lors des changements d'onglet</div></div><label class="tog-mini"><input type="checkbox" id="tog-sounds" checked onchange="setNotif('sounds',this.checked)"><span class="tog-mini-sl"></span></label></div>
     </div>

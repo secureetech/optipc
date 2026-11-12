@@ -191,7 +191,7 @@ function loadPersistedLogs(){
   }catch(e){}
 }
 function clearLogs(){_logs=[];try{localStorage.removeItem('optipc_logs');}catch(e){}document.getElementById('activity-log').innerHTML='';}
-function fmtSz(b){if(!b||b<=0)return'0 B';if(b>=1073741824)return(b/1073741824).toFixed(1)+' GB';if(b>=1048576)return Math.round(b/1048576)+' MB';if(b>=1024)return Math.round(b/1024)+' KB';return b+' B';}
+function fmtSz(b){if(!b||b<=0)return'0 o';if(b>=1073741824)return(b/1073741824).toFixed(1).replace('.',',')+' Go';if(b>=1048576)return Math.round(b/1048576)+' Mo';if(b>=1024)return Math.round(b/1024)+' Ko';return b+' o';}
 function escS(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 
 // ── NAVIGATION ───────────────────────────────────────────────────────────────
@@ -1180,34 +1180,43 @@ async function loadDiskInfo(){
     if(d.drives&&d.drives.length){const c=d.drives.find(dr=>dr.letter==='C:')||d.drives[0];document.getElementById('stat-disk').textContent=c.free||'--';}
   }catch(e){}
 }
+const REG_CATS={apps:'Logiciels fantômes',run:'Programmes au démarrage disparus',paths:'Chemins d’applications invalides',shared:'Fichiers partagés manquants',open:'« Ouvrir avec » périmés',cache:'Traces de logiciels supprimés',firewall:'Règles de pare-feu orphelines',fonts:'Polices et aides manquantes'};
+let _regOff={};
+function regSelected(){return _regItems.filter(i=>!_regOff[i.cat]);}
+function regEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function regRender(){
+  const el=document.getElementById('reg-result');if(!el)return;
+  const sel=regSelected().length;
+  const btn=document.getElementById('btn-clean-reg');if(btn)btn.disabled=(sel===0);
+  if(!_regItems.length){el.innerHTML='<div style="color:var(--green);font-weight:600">Registre propre ✓ <span style="font-weight:400;color:var(--muted)">— aucune entrée invalide</span></div>';return;}
+  let html='<div style="font-weight:700;margin-bottom:10px;color:var(--orange)"><span id="reg-total">0</span> entrée(s) invalide(s) trouvée(s) · '+sel+' sélectionnée(s)</div>';
+  Object.keys(REG_CATS).forEach(c=>{
+    const list=_regItems.filter(i=>i.cat===c);if(!list.length)return;
+    html+='<details style="border-top:1px solid rgba(var(--inv-rgb),.06);padding:7px 0"><summary style="cursor:pointer;display:flex;align-items:center;gap:9px">'+
+      '<input type="checkbox" '+(_regOff[c]?'':'checked')+' onclick="event.stopPropagation();_regOff[\''+c+'\']=!this.checked;regRender()">'+
+      '<span style="flex:1;font-weight:600">'+REG_CATS[c]+'</span><span style="font-weight:700;color:var(--orange)">'+list.length+'</span></summary>'+
+      list.slice(0,200).map(i=>'<div style="padding:4px 0 4px 26px"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+regEsc(i.name)+'</div>'+
+        '<div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+regEsc(i.detail)+'">Fichier introuvable : '+regEsc(i.detail)+'</div></div>').join('')+
+      (list.length>200?'<div style="padding:4px 0 4px 26px;font-size:11px;color:var(--muted)">… et '+(list.length-200)+' autres</div>':'')+'</details>';
+  });
+  el.innerHTML=html;
+  const t=document.getElementById('reg-total');
+  if(t){if(typeof countUp==='function')countUp(t,_regItems.length,700);else t.textContent=_regItems.length;}
+}
 async function doRegScan(){
-  loading(true,'Scan registre...');
+  loading(true,'Analyse du registre…');
   try{
-    const d=await API.get('/api/registry/scan');
-    _regItems=d.items||[];
-    const el=document.getElementById('reg-result');
-    const color=d.count>0?'var(--orange)':'var(--green)';
-    let html='<div style="font-weight:600;margin-bottom:8px;color:'+color+'">'+d.count+' entrée(s) invalide(s)</div>';
-    if(_regItems.length>0){
-      html+=_regItems.map(i=>'<div style="display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid rgba(var(--inv-rgb),.04)">'+
-        '<div style="flex:1;min-width:0"><div style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)">'+i.name+'</div>'+
-        (i.detail?'<div style="font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)" title="'+String(i.detail).replace(/"/g,'&quot;')+'">'+i.detail+'</div>':'')+'</div>'+
-        '<span style="flex-shrink:0;white-space:nowrap;font-size:9px;background:rgba(240,136,62,.1);color:var(--orange);border:1px solid rgba(240,136,62,.18);border-radius:4px;padding:1px 6px">'+i.issue+'</span>'+
-        '</div>').join('');
-    } else {
-      html+='<div style="color:var(--green);font-size:11px">Registre propre ✓</div>';
-    }
-    if(el)el.innerHTML=html;
-    const btnClean=document.getElementById('btn-clean-reg');
-    if(btnClean)btnClean.disabled=(d.count===0);
-    toast(d.count===0?'Registre propre':d.count+' problèmes trouvés','ok');
-    addLog('Scan registre: '+d.count+' problème(s)');
+    const d=await API.get('/api/registry/scan',180000);
+    _regItems=d.items||[];_regOff={};
+    regRender();
+    toast(d.count===0?'Registre propre':d.count+' entrées invalides trouvées','ok');
+    addLog('Analyse du registre : '+d.count+' entrée(s) invalide(s) sur '+(d.scanned||0)+' vérifiées');
   }catch(e){
-    toast('Erreur scan registre: '+(e.message||e),'err');
+    toast('Erreur pendant l’analyse du registre : '+(e.message||e),'err');
   }
   loading(false);
 }
-async function doRegClean(){confirm2('Nettoyer le registre','Supprimer '+_regItems.length+' entrée(s) ?',async()=>{loading(true);try{const r=await API.post('/api/registry/clean',{keys:_regItems.map(i=>i.key)});if(r.failed>0){toast(r.cleaned+' nettoyée(s), '+r.failed+' impossible(s)','err');}else{showSuccess(r.cleaned+' entrées nettoyées (sauvegarde créée)','Registre optimisé');}_regItems=[];document.getElementById('btn-clean-reg').disabled=true;doRegScan();}catch(e){toast('Erreur','err');}loading(false);});}
+async function doRegClean(){const sel=regSelected();if(!sel.length)return;confirm2('Nettoyer le registre','Supprimer '+sel.length+' entrée(s) invalide(s) ? Une sauvegarde est créée avant.',async()=>{loading(true,'Nettoyage du registre…');try{const r=await API.post('/api/registry/clean',{keys:sel.map(i=>i.key)},180000);if(r.failed>0){toast(r.cleaned+' nettoyée(s), '+r.failed+' impossible(s)','err');}else{showSuccess(r.cleaned+' entrées nettoyées (sauvegarde créée)','Registre optimisé');}await doRegScan();}catch(e){toast('Erreur pendant le nettoyage du registre','err');}loading(false);});}
 
 // ── PARAMS ───────────────────────────────────────────────────────────────────
 async function loadScheduleStatus(){
