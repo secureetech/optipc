@@ -68,7 +68,7 @@ jobs:
           $t.items | ForEach-Object { Write-Host ("  {0,-10} todo={1,-3} {2}" -f $_.id, $_.todo, $_.detail) }
           $ids = @('menus','widgets','tasks','bgapps','game','browsers','faststart')
           $a = Invoke-OptiTune $ids
-          foreach($k in $ids){ Write-Host ("  appliqué {0,-10} ok={1} {2}" -f $k, $a.results[$k].ok, $a.results[$k].msg) }
+          foreach($k in $ids){ Write-Host ("  appliqué {0,-10} ok={1} {2}" -f $k, $a.results[$k].ok, $a.results[$k].msg + " " + $a.results[$k].error) }
           $t2 = Get-OptiTune
           foreach($k in 'menus','widgets','bgapps'){ $it = $t2.items | Where-Object { $_.id -eq $k }; if($it.todo -ne 0){ throw "$k : il reste $($it.todo) réglage(s) après application" } }
           if([int](Get-ItemProperty 'HKCU:\Control Panel\Desktop').MenuShowDelay -gt 20){ throw "Délai des menus non modifié" }

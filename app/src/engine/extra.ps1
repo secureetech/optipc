@@ -1857,7 +1857,7 @@ function Invoke-OptiTuneOne([string]$id, $st){
         }
         'browsers' {
             $done = New-Object System.Collections.ArrayList; $open = New-Object System.Collections.ArrayList
-            $undo = New-Object System.Collections.ArrayList
+            $undo = New-Object System.Collections.ArrayList; $err = ''
             if($st.browsers){ foreach($u in @($st.browsers)){ [void]$undo.Add($u) } }
             foreach($b in @(Get-OptiTuneBrowsers)){
                 # Un navigateur ouvert reecrit ses reglages en se fermant : on attend qu'il soit ferme.
@@ -1875,11 +1875,12 @@ function Invoke-OptiTuneOne([string]$id, $st){
                     $known = $false; foreach($u in $undo){ if($u.file -eq $b.file){ $known = $true } }
                     if(-not $known){ [void]$undo.Add(@{file=$b.file; exe=$b.exe; id=$b.id; bg=$b.bg; sb=$b.sb}) }
                     [void]$done.Add($b.name)
-                }catch{}
+                }catch{ $err = $_.Exception.Message }
             }
             $st.browsers = @($undo)
             if($done.Count){ return @{ok=$true; n=$done.Count; msg=(($done -join ' et ') + $(if($open.Count){ ' · ' + ($open -join ', ') + ' : à refaire navigateur fermé' } else { '' }))} }
             if($open.Count){ return @{ok=$false; n=0; msg=(($open -join ', ') + ' ouvert : à refaire navigateur fermé')} }
+            if($err){ return @{ok=$false; n=0; msg='non effectué'; error=$err} }
             return @{ok=$true; n=0; msg='déjà fait'}
         }
         'tasks' {
