@@ -1,0 +1,63 @@
+# Vérifie le moteur d'OptiPC sur un vrai Windows à chaque envoi de code :
+# syntaxe des scripts, puis analyse et nettoyage du registre sur une entrée de test.
+name: Vérification du moteur
+
+on:
+  push:
+    paths: ["app/src/engine/**", ".github/workflows/verification.yml"]
+  workflow_dispatch:
+
+jobs:
+  verifier:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntaxe et registre (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fails = 0
+          foreach($f in 'functions.ps1','extra.ps1','router.ps1'){
+            $e = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\app\src\engine\$f", [ref]$null, [ref]$e)
+            Write-Host "$f : $($e.Count) erreur(s) de syntaxe"
+            $e | Select-Object -First 8 | ForEach-Object { Write-Host "  ligne $($_.Extent.StartLineNumber) : $($_.Message)" }
+            $fails += $e.Count
+          }
+          if($fails){ throw "Erreurs de syntaxe" }
+
+          $src = (Get-Content app\src\engine\functions.ps1 -Raw) + "`n" + (Get-Content app\src\engine\extra.ps1 -Raw)
+          . ([scriptblock]::Create($src))
+          Write-Host ("Format-Size : " + (Format-Size 1610612736) + " | " + (Format-Size 5242880))
+          Write-Host ("Moteur Google d'origine : " + (Get-OptiUrlHost '{google:baseURL}search?q={searchTerms}') + " -> sûr = " + (Test-OptiSafeHost (Get-OptiUrlHost '{google:baseURL}search?q={searchTerms}')))
+          if(-not (Test-OptiSafeHost (Get-OptiUrlHost '{google:baseURL}search?q={searchTerms}'))){ throw "Faux détournement Google" }
+          if(Test-OptiSafeHost (Get-OptiUrlHost 'http://search.mauvais-site.example/?q={searchTerms}')){ throw "Détournement non détecté" }
+
+          # Entrées de test : un programme au démarrage et un chemin d'application qui pointent vers un fichier absent.
+          $run = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run'
+          New-ItemProperty -Path $run -Name 'OptiPCTest [1]' -Value '"C:\Dossier Absent\fantome.exe" /auto' -Force | Out-Null
+          New-Item 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\optipctest.exe' -Force | Out-Null
+          Set-ItemProperty 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\optipctest.exe' -Name '(default)' -Value 'C:\Dossier Absent\optipctest.exe'
+
+          $sw = [Diagnostics.Stopwatch]::StartNew()
+          $r = Scan-Registry
+          Write-Host "Analyse : $($r.count) entrée(s) invalide(s) sur $($r.scanned) vérifiées en $([int]$sw.Elapsed.TotalSeconds) s"
+          $r.items | Group-Object { $_.cat } | ForEach-Object { Write-Host "  $($_.Name) : $($_.Count)" }
+          $r.items | Select-Object -First 12 | ForEach-Object { Write-Host "    [$($_.cat)] $($_.name) -> $($_.detail)" }
+          $mine = @($r.items | Where-Object { $_.detail -like 'C:\Dossier Absent\*' })
+          if($mine.Count -ne 2){ throw "Entrées de test non trouvées ($($mine.Count)/2)" }
+
+          # Sécurité : une clé hors liste n'est jamais supprimée.
+          $bad = Clean-RegistryKeys @('K|HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft', 'V|HKEY_CURRENT_USER\SOFTWARE\Microsoft|x')
+          if($bad.cleaned -ne 0 -or $bad.failed -ne 2){ throw "Une clé interdite a été acceptée" }
+          if(-not (Test-Path 'HKLM:\SOFTWARE\Microsoft')){ throw "Clé système supprimée" }
+
+          $c = Clean-RegistryKeys @($mine | ForEach-Object { $_.key })
+          Write-Host "Nettoyage : $($c.cleaned) supprimée(s), $($c.failed) échec(s), sauvegardes dans $($c.backupDir)"
+          Get-ChildItem $c.backupDir | ForEach-Object { Write-Host "  sauvegarde : $($_.Name) ($($_.Length) octets)" }
+          if($c.cleaned -ne 2 -or $c.failed -ne 0){ throw "Nettoyage incomplet" }
+          if((Get-Item $run).GetValueNames() -contains 'OptiPCTest [1]'){ throw "Valeur de test encore présente" }
+          if(Test-Path 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\optipctest.exe'){ throw "Clé de test encore présente" }
+          $again = @((Scan-Registry).items | Where-Object { $_.detail -like 'C:\Dossier Absent\*' })
+          if($again.Count){ throw "Entrées encore signalées après nettoyage" }
+          Write-Host "TOUT EST BON"

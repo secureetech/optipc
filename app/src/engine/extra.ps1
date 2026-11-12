@@ -1447,6 +1447,8 @@ function Get-OptiBrowserDefs {
 function Get-OptiPolValues { @('HomepageLocation','HomepageIsNewTabPage','NewTabPageLocation','RestoreOnStartup','DefaultSearchProviderEnabled','DefaultSearchProviderSearchURL','DefaultSearchProviderName','DefaultSearchProviderKeyword','DefaultSearchProviderSuggestURL','DefaultSearchProviderNewTabURL','ShowHomeButton') }
 function Get-OptiPolKeys { @('RestoreOnStartupURLs','URLsToRestoreOnStartup','Homepage','SearchEngines','NewTabPage') }
 function Get-OptiUrlHost([string]$u){
+    # Reglage Google d'origine de Chrome et Edge : « {google:baseURL}search?q=... » n'est pas un detournement.
+    if($u -match '^(https?://)?\{google:baseURL\}'){ return 'google.com' }
     try{ if($u -notmatch '^[a-z]+://'){ $u = 'http://' + $u }; return ([Uri]$u).Host.ToLower() }catch{ return [string]$u }
 }
 function Test-OptiSafeHost([string]$h){
