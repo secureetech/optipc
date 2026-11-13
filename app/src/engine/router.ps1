@@ -137,6 +137,7 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/scanner/stop$"    { $r = Request-ScanStop; break }
             "^/api/settings$"        { if($isGet){ $r = Get-OptiSettings } else { $r = Set-OptiSettings $b }; break }
             "^/api/consent$"         { if($isGet){ $r = Get-ConsentStatus } else { $r = Set-Consent $b.version }; break }
+            "^/api/entretien$"       { if($isGet){ $r = Get-OptiEntretien } else { $r = Set-OptiEntretien $b }; break }
             "^/api/update/check$"    { $r = Get-OptiPCUpdate ([bool]$b.force); break }
             "^/api/update/install$"  { $r = Install-OptiPCUpdate $b.url $b.sha256; break }
             "^/api/version$"         { $r = @{version=(Get-OptiPCVersion)}; break }

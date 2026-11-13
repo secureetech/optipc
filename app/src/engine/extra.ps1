@@ -1995,3 +1995,31 @@ function Invoke-OptiDiskCheck {
         return @{ok=$true; errors=$true; msg='Des erreurs ont été trouvées : Windows réparera le disque au prochain redémarrage du PC.'}
     }catch{ return @{ok=$false; msg='Vérification impossible : ' + $_.Exception.Message} }
 }
+
+# ════════════════════════════════════════════════════════════════════
+#  MODE ENTRETIEN (nettoyage a distance SecureeTech)
+#  Le technicien depose une demande (entretien.json) ; l'interface la voit,
+#  lance a l'ecran l'analyse complete puis l'optimisation, et y ecrit son
+#  avancement (analyse / optimisation / fini) que le technicien relit.
+# ════════════════════════════════════════════════════════════════════
+function Get-OptiEntretienFile { "$env:LOCALAPPDATA\OptiPC\entretien.json" }
+function Get-OptiEntretien {
+    $f = Get-OptiEntretienFile
+    if(-not(Test-Path $f)){ return @{pending=$false} }
+    try{
+        $o = [IO.File]::ReadAllText($f,[Text.Encoding]::UTF8) | ConvertFrom-Json
+        $age = ((Get-Date) - [datetime]$o.date).TotalMinutes
+        if([string]$o.etat -eq 'demande' -and $age -ge 0 -and $age -lt 30){ return @{pending=$true;id=[string]$o.id} }
+    }catch{}
+    @{pending=$false}
+}
+function Set-OptiEntretien($b){
+    $f = Get-OptiEntretienFile
+    try{
+        $o = [IO.File]::ReadAllText($f,[Text.Encoding]::UTF8) | ConvertFrom-Json
+        if([string]$o.id -ne [string]$b.id){ return @{success=$false} }
+        $rec = @{ id=[string]$o.id; date=[string]$o.date; etat=[string]$b.etat; resume=[string]$b.resume; pro=[bool]$b.pro; maj=(Get-Date -Format "yyyy-MM-ddTHH:mm:ss") }
+        [IO.File]::WriteAllText($f, ($rec | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))
+        @{success=$true}
+    }catch{ @{success=$false;error=$_.Exception.Message} }
+}
