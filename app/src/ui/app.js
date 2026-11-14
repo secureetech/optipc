@@ -1218,8 +1218,12 @@ function closeWelcome(){ const ov=$('welcome-ov'); if(ov){ ov.classList.remove('
 /* ── Mode entretien (nettoyage à distance SecureeTech) ───────────────
    Le technicien dépose une demande ; OptiPC lance alors à l'écran l'analyse complète puis
    l'optimisation, comme si le client cliquait sur « Analyser » puis « Optimiser ». */
-let _entretienRun=false;
+let _entretienRun=false, _entretienJusqua=0;
+/* On ne regarde s'il y a une demande que pendant 2 minutes après l'ouverture ou le retour de la fenêtre :
+   le reste du temps, OptiPC ne fait aucune vérification (aucune charge sur le PC du client). */
+function veilleEntretien(){ _entretienJusqua=Date.now()+120000; }
 async function checkEntretien(){
+  if(Date.now()>_entretienJusqua)return;
   if(_entretienRun||_scanning||_optRunning)return;
   let e=null; try{ e=await API.get('/api/entretien',8000); }catch(x){ return; }
   if(!e||!e.pending)return;
@@ -1253,6 +1257,7 @@ window.onload=async()=>{
   if(!ok)setTimeout(showConsentGate,300); else if(!_isPro)setTimeout(()=>{ if(_trialAvailable())firstLaunchOffer(); else showWelcomeOnce(); },2500);
   pollPerf(); loadScheduleStatus(); loadNotifSetting();
   loadSuite(); setTimeout(checkWeekly,6000);
+  veilleEntretien(); window.addEventListener('focus',veilleEntretien); document.addEventListener('visibilitychange',()=>{ if(!document.hidden)veilleEntretien(); });
   setTimeout(checkEntretien,2500); setInterval(checkEntretien,5000);
   loadHomeStatus();
   // Recherche silencieuse d'une mise à jour à chaque ouverture : proposée si disponible.
