@@ -1215,6 +1215,37 @@ function showLicPro(){ if(_isPro){ toast('Premium est déjà actif','info'); ret
 function showWelcomeOnce(){ if(_welcomeAlreadyShown)return; const ph=($('hero')||{dataset:{}}).dataset.phase; if(ph&&ph!=='idle'&&ph!=='fixed')return; _welcomeAlreadyShown=true; try{ if(localStorage.getItem('optipc_welcome2'))return; localStorage.setItem('optipc_welcome2','1'); }catch(e){} const ov=$('welcome-ov'); if(ov)ov.classList.add('show'); }
 function closeWelcome(){ const ov=$('welcome-ov'); if(ov){ ov.classList.remove('show'); ov.style.display=''; } }
 
+/* ── Mode entretien (nettoyage à distance SecureeTech) ───────────────
+   Le technicien dépose une demande ; OptiPC lance alors à l'écran l'analyse complète puis
+   l'optimisation, comme si le client cliquait sur « Analyser » puis « Optimiser ». */
+let _entretienRun=false, _entretienJusqua=0;
+/* On ne regarde s'il y a une demande que pendant 2 minutes après l'ouverture ou le retour de la fenêtre :
+   le reste du temps, OptiPC ne fait aucune vérification (aucune charge sur le PC du client). */
+function veilleEntretien(){ _entretienJusqua=Date.now()+120000; }
+async function checkEntretien(){
+  if(Date.now()>_entretienJusqua)return;
+  if(_entretienRun||_scanning||_optRunning)return;
+  let e=null; try{ e=await API.get('/api/entretien',8000); }catch(x){ return; }
+  if(!e||!e.pending)return;
+  _entretienRun=true;
+  const dire=async(etat,extra)=>{ try{ await API.post('/api/entretien',Object.assign({id:e.id,etat:etat,resume:'',pro:!!_isPro},extra||{}),8000); }catch(x){} };
+  try{
+    // Aucune fenêtre d'offre ou d'accueil ne doit masquer l'entretien
+    document.querySelectorAll('.ov.show').forEach(o=>o.classList.remove('show'));
+    ['consent-ov','trial-ov','pro-gate-ov'].forEach(id=>{ const o=$(id); if(o){ o.classList.remove('show'); o.style.display=''; } });
+    _welcomeAlreadyShown=true;
+    try{ await loadProStatus(); }catch(x){}
+    await dire('analyse');
+    goSec('home'); await startHomeScan();
+    await new Promise(r=>setTimeout(r,1500));
+    await dire('optimisation');
+    await startOptimize();
+    const k=$('fix-kpis');
+    await dire('fini',{resume:String((k&&k.innerText)||'').replace(/\s+/g,' ').trim().slice(0,300)});
+  }catch(x){ await dire('erreur',{resume:String((x&&x.message)||x).slice(0,200)}); }
+  _entretienRun=false;
+}
+
 /* ── Démarrage de l'interface ──────────────────────────────────────── */
 window.onload=async()=>{
   applyTheme(); syncSettingsUI();
@@ -1226,6 +1257,8 @@ window.onload=async()=>{
   if(!ok)setTimeout(showConsentGate,300); else if(!_isPro)setTimeout(()=>{ if(_trialAvailable())firstLaunchOffer(); else showWelcomeOnce(); },2500);
   pollPerf(); loadScheduleStatus(); loadNotifSetting();
   loadSuite(); setTimeout(checkWeekly,6000);
+  veilleEntretien(); window.addEventListener('focus',veilleEntretien); document.addEventListener('visibilitychange',()=>{ if(!document.hidden)veilleEntretien(); });
+  setTimeout(checkEntretien,2500); setInterval(checkEntretien,5000);
   loadHomeStatus();
   // Recherche silencieuse d'une mise à jour à chaque ouverture : proposée si disponible.
   setTimeout(async()=>{ const u=await checkUpdate(false); if(u)showUpdatePrompt(u); },4000);
