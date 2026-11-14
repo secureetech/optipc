@@ -1686,6 +1686,8 @@ function Get-LicenseStatus {
             if([bool]$m2.trial){ $res.trialEnded = $true }
         } catch {}
     }
+    # Essai deja prolonge une fois (e-mail + telephone) : on ne le repropose plus.
+    try { if(Test-Path "$env:LOCALAPPDATA\OptiPC\trial.extended"){ $res.trialExtended = $true } } catch {}
     try {
         if(Test-Path "$env:LOCALAPPDATA\OptiPC\trial.used"){
             $res.trialUsed = $true
@@ -1759,6 +1761,54 @@ function Invoke-StartTrial($prenom, $email, $telephone, $rappel, $nom = '', $new
         $st
     } catch {
         @{ok=$false;message="L'essai n'a pas pu demarrer sur cet ordinateur : $($_.Exception.Message)"}
+    }
+}
+
+# ════════════════════════════════════════════════════════════════════
+#  PROLONGATION DE L'ESSAI (14/11/2026)
+#  5 jours de plus, une seule fois, contre un e-mail et un telephone.
+#  Le serveur prolonge LA MEME licence d'essai (meme cle) et y range les
+#  coordonnees : une seule ligne par ordinateur cote SecureeTech.
+# ════════════════════════════════════════════════════════════════════
+function Invoke-ExtendTrial($email, $telephone, $accord) {
+    try {
+        $mid = ''
+        try { $mid = Get-MachineFingerprint } catch {}
+        $body = @{ product='optipc'; machine_id=$mid; email=[string]$email; phone=[string]$telephone; consent=[bool]$accord }
+        $r = Invoke-OptiPCWeb ((Get-OptiPCApiBase) + '/v1/optipc/trial/extend') 'POST' $body 30
+        $marque = { try { [System.IO.Directory]::CreateDirectory("$env:LOCALAPPDATA\OptiPC") | Out-Null; [IO.File]::WriteAllText("$env:LOCALAPPDATA\OptiPC\trial.extended", (Get-Date -Format 'o')) } catch {} }
+        if(-not $r.ok){
+            $msg = ''
+            try { if($r.server){ $j = $r.server | ConvertFrom-Json; if($j.message){ $msg = [string]$j.message } } } catch {}
+            if(-not $msg){
+                if($r.status -gt 0){ $msg = "Le serveur a refuse la demande (code $($r.status)). Appelez le 05 54 54 23 43." }
+                else { $msg = "Impossible de joindre le serveur. Verifiez votre connexion internet, puis reessayez." }
+            }
+            if($r.status -eq 409){ & $marque }
+            return @{ok=$false;message=$msg;already=($r.status -eq 409)}
+        }
+        & $marque
+        $cle = [string]$r.data.key
+        $act = Invoke-ActivateLicense $cle
+        if(-not $act.isPro -or -not (Test-IsPro)){
+            return @{ok=$false;message=("Votre essai est prolonge, mais l'activation a echoue : " + [string]$act.message + " Appelez le 05 54 54 23 43.")}
+        }
+        try {
+            $mf = Get-LicenseMetaFile
+            $m = @{}
+            if(Test-Path $mf){
+                $o = Get-Content $mf -Raw | ConvertFrom-Json
+                foreach($p in $o.PSObject.Properties){ $m[$p.Name] = $p.Value }
+            }
+            $m.trial = $true
+            ($m | ConvertTo-Json -Compress) | Out-File $mf -Encoding UTF8 -Force
+        } catch {}
+        $st = Get-LicenseStatus
+        $st.ok = $true
+        $st.days = [int]$r.data.days
+        $st
+    } catch {
+        @{ok=$false;message="L'essai n'a pas pu etre prolonge : $($_.Exception.Message)"}
     }
 }
 

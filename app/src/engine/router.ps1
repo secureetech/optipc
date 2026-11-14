@@ -129,6 +129,7 @@ function Invoke-OptiRoute([string]$path, [string]$method, [string]$bodyText, [st
             "^/api/license/revoke$"   { $r = Invoke-RevokeLicense; break }
             "^/api/license/heartbeat$"{ $r = Invoke-LicenseHeartbeat ([bool]$b.force); break }
             "^/api/license/trial$"    { $r = Invoke-StartTrial $b.prenom $b.email $b.telephone $b.rappel $b.nom $b.newsletter; break }
+            "^/api/license/trial/extend$" { $r = Invoke-ExtendTrial $b.email $b.telephone $b.accord; break }
             "^/api/diskcategories$"  { $r = Get-DiskCategories; break }
             "^/api/security/status$" { $r = Get-SecurityStatus; break }
             "^/api/security/scan$"   { $r = Invoke-MalwareScan; break }

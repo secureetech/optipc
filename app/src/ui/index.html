@@ -522,6 +522,7 @@
   </div>
   <div style="font-size:12px;font-weight:700;color:var(--dim);margin-bottom:12px">Prix TTC · 1 ordinateur · paiement sécurisé · clé envoyée par e-mail</div>
   <button id="pro-gate-trial" class="trial-cta" onclick="closeProGate();openTrial()">Essayer Premium gratuitement 5 jours</button>
+  <button id="pro-gate-extend" class="trial-cta" style="display:none" onclick="closeProGate();openTrialExtend()">Prolonger mon essai gratuit de 5 jours</button>
   <div class="row" style="justify-content:center;flex-wrap:wrap"><button class="btn-su btn-ghost" onclick="closeProGate();goActivate()">J'ai déjà une clé</button></div>
 </div></div>
 
@@ -541,6 +542,28 @@
     <div style="font-size:19px;font-weight:800;margin-bottom:8px">OptiPC Premium est activé !</div>
     <div id="trial-ok-msg" class="dim" style="font-size:14px;line-height:1.7;margin-bottom:16px"></div>
     <button class="trial-cta" onclick="closeTrial()">Commencer</button>
+  </div>
+</div></div>
+
+<div id="trialx-ov" onclick="if(event.target===this)closeTrialExtend()"><div class="trial-box">
+  <button class="ov-close" onclick="closeTrialExtend()" aria-label="Fermer">&times;</button>
+  <div id="trialx-form-zone">
+    <div class="trial-gift">🎁 OFFERT</div>
+    <div style="font-size:21px;font-weight:800;margin-bottom:6px">5 jours de Premium en plus</div>
+    <div class="dim" style="font-size:13.5px;margin-bottom:14px;line-height:1.6">Votre essai est terminé. Indiquez votre e-mail et votre téléphone pour le prolonger gratuitement de 5 jours. Sans carte bancaire.</div>
+    <label class="trial-lbl">Adresse e-mail<input class="inp" id="trialx-mail" type="email" autocomplete="email" placeholder="nom@exemple.fr"></label>
+    <label class="trial-lbl">Numéro de téléphone<input class="inp" id="trialx-tel" type="tel" autocomplete="tel" placeholder="06 12 34 56 78"></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;text-align:left;font-size:12.5px;line-height:1.5;margin-bottom:12px;color:var(--dim)"><input type="checkbox" id="trialx-accord" checked style="margin-top:3px"><span>J'accepte d'être contacté par un technicien SecureeTech au sujet d'OptiPC.</span></label>
+    <div id="trialx-err" style="display:none;color:var(--red);font-size:13px;font-weight:700;margin-bottom:10px"></div>
+    <button class="trial-cta shine" id="trialx-go" onclick="sendTrialExtend()">Prolonger mon essai de 5 jours</button>
+    <div class="row" style="justify-content:center;margin-top:10px"><button class="btn-su btn-ghost" onclick="closeTrialExtend();openBuyPage()">Passer à Premium maintenant</button></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Une seule prolongation par ordinateur. Vos coordonnées servent uniquement à SecureeTech.</div>
+  </div>
+  <div id="trialx-ok-zone" style="display:none">
+    <div style="font-size:34px;margin-bottom:6px">✅</div>
+    <div style="font-size:19px;font-weight:800;margin-bottom:8px">Votre essai est prolongé !</div>
+    <div id="trialx-ok-msg" class="dim" style="font-size:14px;line-height:1.7;margin-bottom:16px"></div>
+    <button class="trial-cta" onclick="closeTrialExtend()">Continuer</button>
   </div>
 </div></div>
 
