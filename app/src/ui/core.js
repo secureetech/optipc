@@ -1525,6 +1525,7 @@ async function loadProStatus(){
     const d=await API.get('/api/license/status');
     if(d.trialUsed){_trialUsed=true;}
     if(d.trialEnded){_trialEnded=true;}
+    if(d.trialExtended){_trialExtended=true;}
     if(d.isPro){_isPro=true;_setProUI(d);_maybeTrialEndingReminder(d);}
     else{_isPro=false;_setFreeUI(); if(_trialEnded)_maybeTrialEndedScreen();}
     _syncTrialButtons();
@@ -1896,7 +1897,7 @@ function _gainLines(g){
 async function _getGains(){ try{ return await API.get('/api/gains',8000); }catch(e){ return null; } }
 
 /* ── ESSAI PRO GRATUIT 5 JOURS ─────────────────────────────────────────── */
-let _trialUsed=false,_trialEnded=false;
+let _trialUsed=false,_trialEnded=false,_trialExtended=false;
 function _trialAvailable(){
   let used=_trialUsed;
   try{ if(localStorage.getItem('optipc_trial_used')==='1')used=true; }catch(e){}
@@ -1905,7 +1906,10 @@ function _trialAvailable(){
 function _syncTrialButtons(){
   const ok=_trialAvailable();
   ['pro-gate-trial','welcome-trial'].forEach(id=>{const b=document.getElementById(id); if(b)b.style.display=ok?'':'none';});
+  const px=document.getElementById('pro-gate-extend'); if(px)px.style.display=_trialExtendAvailable()?'':'none';
 }
+/* Prolongation de l'essai : 5 jours de plus, une seule fois, contre e-mail + téléphone (14/11/2026) */
+function _trialExtendAvailable(){ return !_isPro && _trialEnded && !_trialExtended; }
 function closeTrial(){ document.getElementById('trial-ov').classList.remove('show'); }
 function _trialErr(m){ const e=document.getElementById('trial-err'); e.textContent=m; e.style.display=''; }
 function _trialDaysLeft(exp){
@@ -1925,6 +1929,12 @@ async function _maybeTrialEndingReminder(info){
 }
 /* Essai terminé : écran à la première ouverture qui suit, puis au plus une fois par semaine. */
 async function _maybeTrialEndedScreen(){
+  // Essai terminé et pas encore prolongé : on propose d'abord les 5 jours de plus (au plus une fois par jour)
+  if(_trialExtendAvailable()){
+    try{ const d=+(localStorage.getItem('optipc_trialx_last')||0); if(Date.now()-d<864e5)return; localStorage.setItem('optipc_trialx_last',String(Date.now())); }catch(e){}
+    setTimeout(()=>{ _welcomeAlreadyShown=true; openTrialExtend(); },2500);
+    return;
+  }
   try{
     const last=+(localStorage.getItem('optipc_trial_end_last')||0);
     if(Date.now()-last<7*864e5)return;

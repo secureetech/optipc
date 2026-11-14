@@ -1232,7 +1232,7 @@ async function checkEntretien(){
   try{
     // Aucune fenêtre d'offre ou d'accueil ne doit masquer l'entretien
     document.querySelectorAll('.ov.show').forEach(o=>o.classList.remove('show'));
-    ['consent-ov','trial-ov','pro-gate-ov'].forEach(id=>{ const o=$(id); if(o){ o.classList.remove('show'); o.style.display=''; } });
+    ['consent-ov','trial-ov','trialx-ov','pro-gate-ov'].forEach(id=>{ const o=$(id); if(o){ o.classList.remove('show'); o.style.display=''; } });
     _welcomeAlreadyShown=true;
     try{ await loadProStatus(); }catch(x){}
     await dire('analyse');
@@ -1298,6 +1298,36 @@ async function startTrial(){
   }catch(e){ _trialErr("L'essai n'a pas pu démarrer. Vérifiez votre connexion internet."); btn.style.display=''; }
   if(wait)wait.style.display='none';
 }
+function openTrialExtend(){
+  if(!_trialExtendAvailable()){ openBuyPage(); return; }
+  $('trialx-form-zone').style.display=''; $('trialx-ok-zone').style.display='none';
+  $('trialx-err').style.display='none';
+  $('trialx-ov').classList.add('show');
+  setTimeout(()=>{ try{ $('trialx-mail').focus(); }catch(e){} },150);
+}
+function closeTrialExtend(){ $('trialx-ov').classList.remove('show'); }
+async function sendTrialExtend(){
+  const err=m=>{ const e=$('trialx-err'); e.textContent=m; e.style.display=''; };
+  const mail=($('trialx-mail').value||'').trim(), tel=($('trialx-tel').value||'').trim();
+  $('trialx-err').style.display='none';
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail)){ err('Indiquez une adresse e-mail valide.'); return; }
+  if(tel.replace(/\D/g,'').length<8){ err('Indiquez un numéro de téléphone valide.'); return; }
+  const btn=$('trialx-go'), orig=btn.textContent; btn.disabled=true; btn.textContent='Prolongation en cours…';
+  try{
+    const d=await API.post('/api/license/trial/extend',{email:mail,telephone:tel,accord:!!$('trialx-accord').checked},90000);
+    if(d&&d.ok){
+      _trialExtended=true; _trialEnded=false; _isPro=true; _setProUI(d);
+      const fin=d.expires_at?new Date(d.expires_at+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}):'';
+      $('trialx-ok-msg').innerHTML='Toutes les fonctions Premium sont de nouveau débloquées'+(fin?' jusqu’au <strong style="color:var(--text)">'+fin+'</strong>':' pendant 5 jours')+'.';
+      $('trialx-form-zone').style.display='none'; $('trialx-ok-zone').style.display='';
+      _syncTrialButtons();
+    }else{
+      if(d&&d.already){ _trialExtended=true; _syncTrialButtons(); }
+      err((d&&d.message)||"L'essai n'a pas pu être prolongé. Appelez le 05 54 54 23 43.");
+    }
+  }catch(e){ err("L'essai n'a pas pu être prolongé. Vérifiez votre connexion internet."); }
+  btn.disabled=false; btn.textContent=orig;
+}
 function firstLaunchOffer(){
   try{ if(localStorage.getItem('optipc_offer_shown'))return; }catch(e){}
   if(_isPro||!_trialAvailable())return;
@@ -1325,7 +1355,7 @@ async function checkWeekly(){
   try{
     const w=await API.get('/api/weekly',15000);
     if(!w||!w.unseen)return;
-    if(document.querySelector('#pro-gate-ov.show,#trial-ov.show,#consent-ov.show,#welcome-ov.show')){ setTimeout(checkWeekly,60000); return; }
+    if(document.querySelector('#pro-gate-ov.show,#trial-ov.show,#trialx-ov.show,#consent-ov.show,#welcome-ov.show')){ setTimeout(checkWeekly,60000); return; }
     const fmt=s=>{ try{ return new Date(s+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'}); }catch(e){ return s; } };
     $('week-period').textContent='Du '+fmt(w.from)+' au '+fmt(w.to);
     const t=[];
